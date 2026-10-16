@@ -389,6 +389,7 @@
   }
   .rodape__tmdb { display: inline-flex; align-items: center; min-height: var(--alvo-toque); align-self: flex-start; }
   .rodape__marca { font-family: var(--fonte-mono); }
+  .rodape__link { display: inline-flex; align-items: center; min-height: var(--alvo-toque); align-self: flex-start; color: var(--cor-texto); text-underline-offset: 3px; }
 
   /* ---------- Avatar ---------- */
   .avatar {
@@ -597,6 +598,31 @@
     &:hover { color: var(--cor-texto); }
     &[aria-expanded="true"] { color: var(--cor-texto); }
   }
+  /* "⋯" encostado à direita da barra */
+  .acao--fim { margin-left: auto; }
+
+  /* ---------- Moderação ---------- */
+  .lista-opcoes { display: flex; flex-direction: column; gap: var(--esp-2); margin-top: var(--esp-4); & .botao { width: 100%; } }
+  .grupo-motivos { border: 0; padding: 0; margin: var(--esp-2) 0 var(--esp-3); display: flex; flex-direction: column; }
+  .opcao-radio {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    min-height: var(--alvo-toque);
+    cursor: pointer;
+    & input { width: 1.25rem; height: 1.25rem; accent-color: var(--cor-destaque); flex-shrink: 0; }
+  }
+  .aviso-bloqueio {
+    display: flex;
+    flex-direction: column;
+    gap: var(--esp-3);
+    margin-top: var(--esp-4);
+    padding: var(--esp-4) var(--esp-5);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-lg);
+    color: var(--cor-texto-2);
+  }
+
   /* Curtido: coração amarelo preenchido */
   .acao--ativa { color: var(--cor-destaque); & svg { fill: currentColor; } }
   .acao--ativa:hover { color: var(--cor-destaque); }
@@ -746,6 +772,8 @@
   .dialogo {
     width: min(100% - 2rem, 36rem);
     max-height: 90dvh;
+    /* O reset zera margens; o <dialog> precisa de auto para centralizar */
+    margin: auto;
     padding: 0;
     background: var(--cor-superficie);
     color: var(--cor-texto);
@@ -762,7 +790,8 @@
   .dialogo__texto { margin-top: var(--esp-3); color: var(--cor-texto-2); }
   .dialogo--pequeno { width: min(100% - 2rem, 24rem); }
   .dialogo--pequeno .dialogo__form { padding-bottom: var(--esp-5); }
-  .dialogo__acoes--simples { position: static; margin: var(--esp-6) 0 0; padding: 0; border: 0; }
+  /* Duas classes: precisa vencer .dialogo__acoes, que vem depois no arquivo */
+  .dialogo__acoes.dialogo__acoes--simples { position: static; margin: var(--esp-6) 0 0; padding: 0; border: 0; background: none; }
 
   /* Tela cheia no celular (editor de review); janela centralizada no desktop */
   .dialogo--cheio {
@@ -1057,6 +1086,16 @@
     gap: var(--esp-4);
     padding-top: 6rem;
   }
+
+  /* ---------- Página de texto (regras) ---------- */
+  .texto-longo {
+    & section { margin-top: var(--esp-8); }
+    & h2 { font-size: var(--texto-lg); margin-bottom: var(--esp-3); }
+    & p + p { margin-top: var(--esp-3); }
+    & p { color: var(--cor-texto-2); max-width: 65ch; }
+    & strong { color: var(--cor-texto); }
+  }
+  .texto-longo__intro { font-size: var(--texto-lg); }
 
   /* ---------- Busca: linha de pessoa ---------- */
   .resultado--pessoa .avatar { justify-self: center; }

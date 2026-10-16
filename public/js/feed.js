@@ -8,6 +8,7 @@
 // =====================================================================
 
 import { criarCartaoReview } from './cartao-review.js';
+import { semBloqueados } from './moderacao-regras.js';
 import { filtrarPorTipo, mesclarPorData, ordenarEmAlta } from './social-regras.js';
 import { classificarTipo, ROTULO_TIPO_PLURAL, tmdbGet } from './tmdb.js';
 import { criarCartaoPoster, criarEsqueletos, criarEstado, el, iniciarPagina, mensagemErro } from './ui.js';
@@ -31,6 +32,7 @@ let mostrando = POR_PAGINA;
 let usuario = null;
 let modulos = null; // { reviews, social, acoes } depois do import dinâmico
 let seguidos = null; // uids que a pessoa segue
+let bloqueados = new Set(); // uids bloqueados (somem do feed)
 const cache = { 'em-alta': null, seguindo: null }; // itens já carregados por aba
 
 // =====================================================================
@@ -43,13 +45,15 @@ let promessaModulos = null;
 /** Carrega (uma vez) os módulos que dependem do Firebase. */
 function carregarModulos() {
   promessaModulos ??= (async () => {
-    const [auth, reviews, social, acoes] = await Promise.all([
+    const [auth, reviews, social, acoes, moderacao] = await Promise.all([
       import('./auth.js'),
       import('./reviews.js'),
       import('./social.js'),
       import('./acoes-review.js'),
+      import('./moderation.js'),
     ]);
     usuario = await auth.usuarioAtual();
+    bloqueados = await moderacao.obterBloqueados(usuario?.uid);
     modulos = { reviews, social, acoes };
     return modulos;
   })();
@@ -101,7 +105,7 @@ function mostrarVazio() {
 
 /** Desenha os itens da aba atual com o filtro aplicado. */
 function renderizarFeed(itens) {
-  const filtrados = filtrarPorTipo(itens, filtroAtual);
+  const filtrados = filtrarPorTipo(semBloqueados(itens, bloqueados), filtroAtual);
   if (!filtrados.length) {
     botaoMaisFeed.hidden = true;
     return mostrarVazio();
@@ -109,7 +113,7 @@ function renderizarFeed(itens) {
   const visiveis = filtrados.slice(0, mostrando);
   listaFeed.replaceChildren(
     ...visiveis.map((item) =>
-      el('li', {}, [criarCartaoReview(item, { mostrarTitulo: true, acoes: modulos.acoes.criarAcoesReview(item.review, usuario) })]),
+      el('li', {}, [criarCartaoReview(item, { mostrarTitulo: true, acoes: modulos.acoes.criarAcoesReview(item.review, usuario, { autor: item.autor }) })]),
     ),
   );
   botaoMaisFeed.hidden = filtrados.length <= mostrando;

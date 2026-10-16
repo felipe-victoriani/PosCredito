@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Trocar o domínio pelo de produção quando definir -->
+<!-- Domínio de produção -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://poscredito.vercel.app/</loc>
@@ -10,5 +10,10 @@
     <loc>https://poscredito.vercel.app/busca.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://poscredito.vercel.app/regras.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
   </url>
 </urlset>

@@ -175,7 +175,7 @@
       "$uid": {
         ".read": true,
         "$alvo": {
-          ".write": "auth != null && auth.uid === $uid && $alvo !== $uid && root.child('users').child($alvo).exists() && newData.exists() !== data.exists() && newData.parent().parent().parent().child('followers').child($alvo).child($uid).exists() === newData.exists() && newData.parent().parent().parent().child('users').child($uid).child('stats').child('following').val() === root.child('users').child($uid).child('stats').child('following').val() + (newData.exists() ? 1 : -1) && newData.parent().parent().parent().child('users').child($alvo).child('stats').child('followers').val() === root.child('users').child($alvo).child('stats').child('followers').val() + (newData.exists() ? 1 : -1)",
+          ".write": "auth != null && auth.uid === $uid && $alvo !== $uid && root.child('users').child($alvo).exists() && newData.exists() !== data.exists() && (!newData.exists() || !root.child('blocks').child($alvo).child($uid).exists()) && newData.parent().parent().parent().child('followers').child($alvo).child($uid).exists() === newData.exists() && newData.parent().parent().parent().child('users').child($uid).child('stats').child('following').val() === root.child('users').child($uid).child('stats').child('following').val() + (newData.exists() ? 1 : -1) && newData.parent().parent().parent().child('users').child($alvo).child('stats').child('followers').val() === root.child('users').child($alvo).child('stats').child('followers').val() + (newData.exists() ? 1 : -1)",
           ".validate": "newData.val() === true"
         }
       }
@@ -197,7 +197,7 @@
       "$reviewId": {
         ".read": true,
         "$uid": {
-          ".write": "auth != null && auth.uid === $uid && root.child('reviews').child($reviewId).exists() && newData.exists() !== data.exists() && newData.parent().parent().parent().child('reviews').child($reviewId).child('likeCount').val() === root.child('reviews').child($reviewId).child('likeCount').val() + (newData.exists() ? 1 : -1)",
+          ".write": "auth != null && auth.uid === $uid && root.child('reviews').child($reviewId).exists() && newData.exists() !== data.exists() && (!newData.exists() || !root.child('blocks').child(root.child('reviews').child($reviewId).child('uid').val()).child(auth.uid).exists()) && newData.parent().parent().parent().child('reviews').child($reviewId).child('likeCount').val() === root.child('reviews').child($reviewId).child('likeCount').val() + (newData.exists() ? 1 : -1)",
           ".validate": "newData.val() === true"
         }
       }
@@ -212,13 +212,47 @@
         ".read": true,
         ".indexOn": ["createdAt"],
         "$commentId": {
-          ".write": "auth != null && root.child('reviews').child($reviewId).exists() && (data.exists() ? (!newData.exists() && (data.child('uid').val() === auth.uid || root.child('reviews').child($reviewId).child('uid').val() === auth.uid)) : newData.exists()) && newData.parent().parent().parent().child('reviews').child($reviewId).child('commentCount').val() === root.child('reviews').child($reviewId).child('commentCount').val() + (newData.exists() ? 1 : -1)",
+          ".write": "auth != null && root.child('reviews').child($reviewId).exists() && (data.exists() ? (!newData.exists() && (data.child('uid').val() === auth.uid || root.child('reviews').child($reviewId).child('uid').val() === auth.uid)) : (newData.exists() && !root.child('blocks').child(root.child('reviews').child($reviewId).child('uid').val()).child(auth.uid).exists())) && newData.parent().parent().parent().child('reviews').child($reviewId).child('commentCount').val() === root.child('reviews').child($reviewId).child('commentCount').val() + (newData.exists() ? 1 : -1)",
           ".validate": "newData.hasChildren(['uid', 'text', 'createdAt'])",
           "uid": { ".validate": "newData.val() === auth.uid" },
           "text": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500" },
           "createdAt": { ".validate": "newData.val() === now" },
           "$outro": { ".validate": false }
         }
+      }
+    },
+
+    // ---------------------------------------------------------------
+    // Bloqueios: privados (só a dona lê e escreve). Quem foi bloqueado
+    // não segue, não curte e não comenta nas reviews de quem bloqueou
+    // (checado nas regras de follows, likes e comments).
+    // ---------------------------------------------------------------
+    "blocks": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$alvo": {
+          ".write": "auth != null && auth.uid === $uid && $alvo !== $uid",
+          ".validate": "newData.val() === true"
+        }
+      }
+    },
+
+    // ---------------------------------------------------------------
+    // Denúncias: só escrita (ninguém lê pelo app; a moderação lê no
+    // console). Uma por pessoa por alvo; id = uid_tipo_alvo.
+    // ---------------------------------------------------------------
+    "reports": {
+      "$reportId": {
+        ".write": "auth != null && !data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['reporterUid', 'targetType', 'targetId', 'reason', 'createdAt']) && $reportId === auth.uid + '_' + newData.child('targetType').val() + '_' + newData.child('targetId').val()",
+        "reporterUid": { ".validate": "newData.val() === auth.uid" },
+        "targetType": { ".validate": "newData.isString() && newData.val().matches(/^(review|comment)$/)" },
+        // Review: precisa existir. Comentário: "reviewId~commentId"
+        "targetId": { ".validate": "newData.isString() && newData.val().length <= 200 && newData.val().matches(/^[A-Za-z0-9_~-]+$/) && (newData.parent().child('targetType').val() === 'comment' ? newData.val().contains('~') : root.child('reviews').child(newData.val()).exists())" },
+        "reason": { ".validate": "newData.isString() && newData.val().matches(/^(spoiler|ofensivo|assedio|spam|outro)$/)" },
+        "details": { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "createdAt": { ".validate": "newData.val() === now" },
+        "$outro": { ".validate": false }
       }
     },
 

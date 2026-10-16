@@ -74,7 +74,8 @@ export function criarCartaoReview({ review, autor }, { mostrarTitulo = false, mo
     el('span', { classe: 'review__status', texto: ROTULO_STATUS[review.status] ?? '' }),
   ]);
 
-  return el('article', { classe: 'review', atributos: { 'aria-label': `Review de ${nomeAutor}` } }, [
+  // data-autor: permite sumir com a review na hora em que a pessoa é bloqueada
+  return el('article', { classe: 'review', atributos: { 'aria-label': `Review de ${nomeAutor}`, 'data-autor': review.uid } }, [
     cabecalho,
     titulo,
     linhaNota,

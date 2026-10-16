@@ -1,0 +1,36 @@
+#!/bin/sh
+# =====================================================================
+# pre-commit — sobe a versão do cache do service worker sozinho
+# ---------------------------------------------------------------------
+# Se algum arquivo listado em STATIC_ASSETS (public/sw.js) estiver no
+# commit, troca CACHE_NAME "-vN" por "-vN+1" e adiciona o sw.js ao
+# commit. Sem isso, quem já abriu o app ficaria preso na versão antiga.
+# Ativar uma vez por clone:  git config core.hooksPath .githooks
+# =====================================================================
+
+SW_FILE="public/sw.js"
+[ -f "$SW_FILE" ] || exit 0
+
+# Arquivos no commit (adicionados, copiados ou modificados)
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+# Lista do STATIC_ASSETS, convertida para caminho do repositório ("/js/ui.js" -> "public/js/ui.js")
+assets=$(awk '/const STATIC_ASSETS/,/\];/' "$SW_FILE" | grep -oE '"[^"]+"' | tr -d '"' | sed 's#^/#public/#')
+[ -z "$assets" ] && exit 0
+
+changed=0
+for f in $staged; do
+  for a in $assets; do
+    if [ "$f" = "$a" ]; then changed=1; break 2; fi
+  done
+done
+[ "$changed" -eq 0 ] && exit 0
+
+# (tr remove o \r de arquivos com quebra de linha do Windows)
+current=$(sed -nE 's/^const CACHE_NAME = "[^"]*-v([0-9]+)";.*/\1/p' "$SW_FILE" | tr -d '\r')
+[ -z "$current" ] && { echo "[pre-commit] aviso: versão de cache não encontrada em $SW_FILE" >&2; exit 0; }
+next=$((current + 1))
+sed -i -E "s/^(const CACHE_NAME = \"[^\"]*-v)${current}\";/\1${next}\";/" "$SW_FILE"
+git add "$SW_FILE"
+echo "[pre-commit] $SW_FILE: cache v${current} -> v${next}"

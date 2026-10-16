@@ -16,6 +16,7 @@ import {
   montarExclusaoComentario,
   montarSeguir,
 } from '../../public/js/social-regras.js';
+import { idAlvo, idDenuncia, montarBloqueio, montarDenuncia } from '../../public/js/moderacao-regras.js';
 
 let ambiente;
 
@@ -519,6 +520,94 @@ describe('comentários', () => {
   it('comentário não pode ser editado', async () => {
     await comentar('bob', RID, 'c1');
     await assertFails(set(ref(dbDe('bob'), `comments/${RID}/c1/text`), 'Editado'));
+  });
+});
+
+// =====================================================================
+// Fase 5: denúncias e bloqueios
+// =====================================================================
+
+describe('denúncias', () => {
+  const RID = idReview('alice', 'tv_209867');
+
+  beforeEach(async () => {
+    await criarPerfil(dbDe('alice'), 'alice', 'alice');
+    await criarPerfil(dbDe('bob'), 'bob', 'bob');
+    await publicar('alice');
+  });
+
+  /** Denuncia como o app. */
+  const denunciar = (uid, tipo, alvo, motivo = 'spam', extras = {}) =>
+    update(ref(dbDe(uid)), montarDenuncia({ uid, tipo, alvo, motivo, carimbo: serverTimestamp(), ...extras }));
+
+  it('denuncia review e comentário', async () => {
+    await assertSucceeds(denunciar('bob', 'review', RID, 'spoiler', { detalhes: 'Falou o final sem aviso.' }));
+    await assertSucceeds(denunciar('bob', 'comment', idAlvo('comment', RID, '-Nabc'), 'ofensivo'));
+  });
+
+  it('ninguém lê denúncias pelo app (só escrita)', async () => {
+    await denunciar('bob', 'review', RID);
+    await assertFails(get(ref(dbDe('bob'), `reports/${idDenuncia('bob', 'review', RID)}`)));
+    await assertFails(get(ref(dbDe('alice'), 'reports')));
+  });
+
+  it('não denuncia duas vezes o mesmo alvo nem apaga a denúncia', async () => {
+    await denunciar('bob', 'review', RID);
+    await assertFails(denunciar('bob', 'review', RID, 'outro'));
+    await assertFails(set(ref(dbDe('bob'), `reports/${idDenuncia('bob', 'review', RID)}`), null));
+  });
+
+  it('recusa sem login, em nome de outra pessoa, motivo inválido ou review inexistente', async () => {
+    await assertFails(update(ref(dbDe(null)), montarDenuncia({ uid: 'x', tipo: 'review', alvo: RID, motivo: 'spam', carimbo: serverTimestamp() })));
+    await assertFails(update(ref(dbDe('bob')), montarDenuncia({ uid: 'alice', tipo: 'review', alvo: RID, motivo: 'spam', carimbo: serverTimestamp() })));
+    await assertFails(denunciar('bob', 'review', RID, 'chato'));
+    await assertFails(denunciar('bob', 'review', 'nada_movie_1'));
+  });
+});
+
+describe('bloqueios', () => {
+  const RID = idReview('alice', 'tv_209867');
+
+  beforeEach(async () => {
+    await criarPerfil(dbDe('alice'), 'alice', 'alice');
+    await criarPerfil(dbDe('bob'), 'bob', 'bob');
+    await publicar('alice');
+  });
+
+  const bloquear = (uid, alvo, sim = true) => update(ref(dbDe(uid)), montarBloqueio({ uid, alvo, bloquear: sim }));
+
+  it('bloqueia e desbloqueia; lista é privada', async () => {
+    await assertSucceeds(bloquear('alice', 'bob'));
+    await assertSucceeds(get(ref(dbDe('alice'), 'blocks/alice')));
+    await assertFails(get(ref(dbDe('bob'), 'blocks/alice')));
+    await assertSucceeds(bloquear('alice', 'bob', false));
+  });
+
+  it('não bloqueia a si mesma nem em nome de outra pessoa', async () => {
+    await assertFails(bloquear('alice', 'alice'));
+    await assertFails(update(ref(dbDe('bob')), montarBloqueio({ uid: 'alice', alvo: 'carol', bloquear: true })));
+  });
+
+  it('quem foi bloqueado não curte, não comenta e não segue', async () => {
+    await bloquear('alice', 'bob');
+    await assertFails(curtir('bob', RID));
+    await assertFails(comentar('bob', RID, 'c1'));
+    await assertFails(seguir('bob', 'alice'));
+  });
+
+  it('depois de desbloquear volta a poder interagir', async () => {
+    await bloquear('alice', 'bob');
+    await bloquear('alice', 'bob', false);
+    await assertSucceeds(curtir('bob', RID));
+    await assertSucceeds(seguir('bob', 'alice'));
+  });
+
+  it('bloqueado ainda consegue desfazer o que já tinha (descurtir, deixar de seguir)', async () => {
+    await curtir('bob', RID);
+    await seguir('bob', 'alice');
+    await bloquear('alice', 'bob');
+    await assertSucceeds(curtir('bob', RID, false));
+    await assertSucceeds(seguir('bob', 'alice', false));
   });
 });
 

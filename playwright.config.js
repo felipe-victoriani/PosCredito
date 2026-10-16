@@ -17,6 +17,9 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORTA}`,
     locale: 'pt-BR',
     trace: 'retain-on-failure',
+    // O service worker interceptaria /api/tmdb antes do page.route (mock);
+    // o teste do PWA liga ele de volta só para si
+    serviceWorkers: 'block',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Pixel 7'] } },

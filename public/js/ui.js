@@ -54,6 +54,7 @@ const ICONES = {
   fechar: ['M18 6 6 18', 'm6 6 12 12'],
   editar: ['M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'],
   comentario: ['M7.9 20A9 9 0 1 0 4 16.1L2 22Z'],
+  opcoes: ['M13 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0', 'M20 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0', 'M6 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0'],
   lixeira: ['M3 6h18', 'M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6', 'M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'],
   enviar: ['M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z', 'm21.854 2.147-10.94 10.939'],
   olho: ['M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0', 'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0'],
@@ -322,12 +323,23 @@ export function montarRodape() {
       el('img', { atributos: { src: 'img/tmdb-logo.svg', alt: 'The Movie Database (TMDB)', width: 120, height: 16, loading: 'lazy' } }),
     ]),
     el('p', { texto: 'Este produto usa a API do TMDB, mas não é endossado ou certificado pelo TMDB.' }),
+    el('a', { classe: 'rodape__link', texto: 'Regras da comunidade', atributos: { href: 'regras.html' } }),
     el('p', { classe: 'rodape__marca', texto: 'PósCréditos · A conversa começa quando o filme acaba.' }),
   );
+}
+
+/**
+ * Registra o service worker (PWA). Só em HTTPS/localhost; falha não
+ * atrapalha o app (apenas perde o modo offline).
+ */
+function registrarServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('/sw.js').catch((erro) => console.warn('[pwa] service worker não registrado', erro));
 }
 
 /** Inicialização comum de toda página. */
 export function iniciarPagina() {
   montarNavegacao();
   montarRodape();
+  registrarServiceWorker();
 }

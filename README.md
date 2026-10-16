@@ -13,7 +13,7 @@ Stack: HTML/CSS/JS puros (ES modules) + Firebase (Auth + Realtime Database) + Ve
 | 2 | Login com Google, perfil, @username único, onboarding, busca de pessoas | Pronta |
 | 3 | Reviews, notas, spoiler, edição/exclusão, listas pessoais | Pronta |
 | 4 | Seguir, curtir, comentar, feed | Pronta |
-| 5 | Card de Stories, denúncia/bloqueio, Security Rules finais, PWA | Pendente |
+| 5 | Card de Stories, denúncia/bloqueio, Security Rules finais, PWA | Pronta |
 
 ## Estrutura
 
@@ -23,6 +23,8 @@ public/                  Tudo que é servido (outputDirectory da Vercel)
   index.html             Início (Fase 1: "Em alta" por tipo)
   busca.html             Busca com filtros por tipo
   titulo.html            Página do título (?id=movie_603 / tv_1396) + editor de review
+  regras.html            Regras da comunidade
+  manifest.json, sw.js   PWA (instalação e cache offline)
   perfil.html            Entrar com Google, perfil próprio/público (?u=@), abas de reviews e listas
   onboarding.html        Cadastro em 3 passos (@, interesses, bio)
   css/                   tokens.css, base.css, componentes.css
@@ -33,7 +35,10 @@ public/                  Tudo que é servido (outputDirectory da Vercel)
     tmdb.js              Cliente do proxy + funções puras de catálogo
     reviews.js           Publicar/editar/excluir e listar reviews
     lists.js             Quero ver, Já vi, Favoritos
-    social.js            Busca de pessoas (Fase 4: seguir, curtir, comentar)
+    social.js            Busca de pessoas, seguir, curtir, comentar
+    moderation.js        Denunciar e bloquear (dados + diálogo)
+    share-card.js        Card de Stories (canvas → PNG)
+    acoes-review.js      Barra de curtir/comentar/compartilhar/⋯
     *-regras.js          Regras puras (validação, montagem das escritas) — testadas
     ui.js, cartao-review.js, interesses.js   Componentes de interface
     feed.js, busca.js, titulo.js, titulo-comunidade.js, perfil.js, onboarding.js   Páginas
@@ -42,6 +47,7 @@ public/                  Tudo que é servido (outputDirectory da Vercel)
 tests/unit/              Vitest (proxy, catálogo, perfil, reviews)
 tests/rules/             @firebase/rules-unit-testing (emulador)
 tests/e2e/               Playwright (Chromium, Firefox, WebKit) com TMDB simulado
+.githooks/pre-commit     Sobe a versão do cache do sw.js sozinho
 tools/gerar-icones.mjs   Gera ícones do PWA e og-image a partir do SVG
 database.rules.json      Security Rules do Realtime Database
 ```
@@ -117,10 +123,39 @@ Na primeira execução o `vercel dev` pergunta as configurações do projeto: ac
 5. Apague: o autor apaga o próprio comentário; a dona da review apaga qualquer comentário dela. Terceiros não veem a lixeira.
 6. Deslogado: curtir/comentar/seguir levam ao login e voltam para a mesma página.
 
+### Testar a Fase 5 manualmente
+
+1. **Card para Stories:** em qualquer review, toque no ícone de compartilhar → no celular abre o menu de compartilhar com a imagem 1080x1920 (escolha Instagram → Stories); no computador a imagem é baixada. Review com spoiler não leva o texto para o card.
+2. **Denunciar:** toque em **⋯** numa review (ou comentário) de outra pessoa → **Denunciar** → motivo → **Enviar denúncia**. Denunciar de novo o mesmo item mostra "Você já tinha denunciado".
+3. **Bloquear:** **⋯** → **Bloquear @pessoa** → as reviews/comentários dela somem na hora. Com a conta bloqueada, tente curtir, comentar ou seguir quem bloqueou: o app recusa. No perfil da pessoa aparece **Desbloquear**.
+4. **Regras:** link "Regras da comunidade" no rodapé.
+5. **PWA:** no Chrome do Android, menu → **Instalar app** (ou "Adicionar à tela inicial"). No iPhone, Safari → Compartilhar → **Adicionar à Tela de Início**. Abre em tela cheia com o ícone do PósCréditos. Desligue a internet e reabra: as telas abrem (dados do Firebase precisam de conexão).
+
+## Moderação: onde ver as denúncias
+
+As denúncias ficam em `reports/` e **ninguém consegue ler pelo app** (só escrita). Para ver: Console do Firebase → *Realtime Database* → *Dados* → `reports`. Cada denúncia tem `reporterUid`, `targetType` (`review`/`comment`), `targetId` (para comentário: `reviewId~commentId`), `reason`, `details` e `createdAt`. Para remover um conteúdo, apague-o pelo console (a review em `reviews/{id}` junto com `titleReviews`, `userReviews` e o ajuste em `titleStats`; ou o comentário em `comments/{reviewId}/{id}` e `commentCount` −1).
+
+## PWA e cache (importante a cada deploy)
+
+- `public/sw.js` guarda os arquivos do app (lista `STATIC_ASSETS`) com **Cache First**: abre rápido e funciona offline. O catálogo (`/api/tmdb`) é **Network First**.
+- Mudou HTML, CSS ou JS da lista? A versão em `CACHE_NAME` (`poscreditos-vN`) **precisa subir**, senão quem já abriu o app fica na versão antiga. O hook faz isso sozinho no commit — ative **uma vez** por clone:
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+- Criou um arquivo novo em `public/` (HTML/CSS/JS/ícone)? Acrescente em `STATIC_ASSETS` no `sw.js`.
+
+## App nativo (Capacitor, depois)
+
+A base já evita APIs que quebram em WebView, com estas observações para quando empacotar:
+- **Login com Google:** em WebView o popup/redirect do Firebase não funciona; usar o plugin `@capacitor-firebase/authentication` (login nativo) e passar a credencial ao Firebase JS.
+- **Compartilhar o card:** usar `@capacitor/share` + `@capacitor/filesystem` (salvar o PNG e compartilhar o arquivo).
+- **Service worker** não é usado dentro do app nativo (os arquivos já vêm no pacote).
+- **Trailer do YouTube** precisa de `referrerpolicy` (já configurado) e do domínio do app no `server.hostname`.
+
 ## Testes automatizados
 
 ```bash
-npm test             # Vitest: proxy + funções de catálogo
+npm test             # Vitest: proxy, catálogo, perfil, reviews, social, moderação e card
 npm run test:rules   # Security Rules no emulador do Realtime Database
 npm run test:e2e     # Playwright em Chromium, Firefox e WebKit (TMDB simulado, sem rede)
 npm run test:tudo    # os três em sequência
@@ -160,4 +195,9 @@ Depois do primeiro deploy de produção, troque `https://poscredito.vercel.app` 
 - **Feed "Em alta":** as 50 reviews mais recentes, ordenadas por curtidas. **"Seguindo":** as 5 últimas de cada pessoa seguida (até 50 pessoas), por data. Simples para o tamanho do MVP; com muita gente, vale um feed pré-montado por Cloud Function.
 - **Limitação conhecida:** `commentCount` só anda de 1 em 1, mas (como os contadores próprios abaixo) não é amarrado a um comentário específico — dá para inflar de 1 em 1 sem comentar. Reviews excluídas deixam curtidas/comentários órfãos no banco (não aparecem em lugar nenhum).
 - **Limitação conhecida:** os contadores próprios (`stats.reviews`/`stats.watched`) só andam de 1 em 1, mas as regras não conseguem ligar cada +1 a uma review/lista específica. Para recontar com 100% de garantia seria preciso uma Cloud Function (fora do escopo do MVP).
-# PosCredito
+
+## Decisões da Fase 5
+
+- **Card:** canvas 1080x1920 com as cores lidas dos tokens CSS (uma fonte só de verdade). As capas do TMDB liberam CORS, então o PNG pode ser exportado. Compartilha via Web Share API com arquivo; sem suporte, baixa.
+- **Denúncias:** `reports/{uid}_{tipo}_{alvo}` — uma por pessoa por item, só escrita, motivo de uma lista fechada (`spoiler`, `ofensivo`, `assedio`, `spam`, `outro`) e detalhes opcionais até 300 caracteres.
+- **Bloqueio:** `blocks/{uid}/{bloqueado}: true`, lido só pela própria pessoa. Além de esconder o conteúdo no app, as Security Rules impedem quem foi bloqueado de curtir, comentar e seguir quem bloqueou (desfazer curtida/follow antigos continua permitido).

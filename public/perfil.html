@@ -11,6 +11,7 @@
   <!-- Ícones -->
   <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
 
   <!-- Open Graph genérico (perfil é montado no navegador) -->
   <meta property="og:type" content="website">
@@ -106,6 +107,12 @@
         <button id="botao-editar" class="botao botao--secundario" type="button" hidden>Editar perfil</button>
         <!-- Seguir (só no perfil de outra pessoa); aria-pressed = já segue -->
         <button id="botao-seguir" class="botao botao--primario botao-seguir" type="button" aria-pressed="false" hidden>Seguir</button>
+      </div>
+
+      <!-- Pessoa bloqueada por quem está vendo -->
+      <div id="aviso-bloqueio" class="aviso-bloqueio" role="status" hidden>
+        <p id="texto-bloqueio"></p>
+        <button id="botao-desbloquear" class="botao botao--secundario" type="button">Desbloquear</button>
       </div>
 
       <!-- Abas: setas do teclado trocam de aba (padrão ARIA tabs) -->

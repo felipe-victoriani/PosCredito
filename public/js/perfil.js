@@ -16,6 +16,7 @@ import {
 } from './auth.js';
 import { criarAcoesReview } from './acoes-review.js';
 import { criarCartaoReview } from './cartao-review.js';
+import { definirBloqueio, obterBloqueados } from './moderation.js';
 import { definirSeguindo, estaSeguindo } from './social.js';
 import { criarSeletor, GENEROS, lerInteresses, lerSelecao, montarInteresses, TIPOS } from './interesses.js';
 import { obterLista } from './lists.js';
@@ -103,7 +104,11 @@ function mostrarPerfil(perfil, proprio) {
   $('botao-menu').hidden = !proprio;
   $('botao-editar').hidden = !proprio;
   $('botao-seguir').hidden = proprio;
-  if (!proprio) atualizarBotaoSeguir();
+  $('aviso-bloqueio').hidden = true;
+  if (!proprio) {
+    atualizarBotaoSeguir();
+    verificarBloqueio();
+  }
 
   mostrarArea(areaPerfil);
 
@@ -166,6 +171,39 @@ async function alternarSeguir() {
   }
 }
 
+// ---------- Bloqueio ----------
+
+/** Perfil de alguém que a pessoa bloqueou: aviso + "Desbloquear". */
+async function verificarBloqueio() {
+  if (!usuarioLogado) return;
+  try {
+    const bloqueados = await obterBloqueados(usuarioLogado.uid);
+    const bloqueado = bloqueados.has(perfilAtual.uid);
+    $('texto-bloqueio').textContent = `Você bloqueou @${perfilAtual.username}. As reviews e comentários dessa pessoa não aparecem para você.`;
+    $('aviso-bloqueio').hidden = !bloqueado;
+    $('botao-seguir').hidden = bloqueado;
+    $('abas-perfil').hidden = bloqueado;
+    for (const nome of ABAS) $(`painel-${nome}`).hidden = bloqueado || $(`aba-${nome}`).getAttribute('aria-selected') !== 'true';
+  } catch (erro) {
+    console.error('[perfil] bloqueio', erro);
+  }
+}
+
+async function desbloquear() {
+  const botao = $('botao-desbloquear');
+  botao.disabled = true;
+  try {
+    await definirBloqueio(usuarioLogado.uid, perfilAtual.uid, false);
+    mostrarToast(`@${perfilAtual.username} foi desbloqueado.`);
+    await verificarBloqueio();
+  } catch (erro) {
+    console.error('[perfil] desbloquear', erro);
+    mostrarToast('Não foi possível desbloquear agora.');
+  } finally {
+    botao.disabled = false;
+  }
+}
+
 // ---------- Abas ----------
 
 /** Mostra a aba pedida e carrega o conteúdo na primeira vez. */
@@ -211,7 +249,9 @@ async function carregarReviews({ continuar = false } = {}) {
     if (!continuar) lista.replaceChildren();
     lista.append(
       ...itens.map((item) =>
-        el('li', {}, [criarCartaoReview(item, { mostrarTitulo: true, mostrarAutor: false, acoes: criarAcoesReview(item.review, usuarioLogado) })]),
+        el('li', {}, [
+          criarCartaoReview(item, { mostrarTitulo: true, mostrarAutor: false, acoes: criarAcoesReview(item.review, usuarioLogado, { autor: item.autor }) }),
+        ]),
       ),
     );
     cursorReviews = cursor;
@@ -383,6 +423,7 @@ $('abas-perfil').addEventListener('click', (evento) => {
 $('abas-perfil').addEventListener('keydown', aoTeclarNasAbas);
 $('mais-reviews-perfil').addEventListener('click', () => carregarReviews({ continuar: true }));
 $('botao-seguir').addEventListener('click', alternarSeguir);
+$('botao-desbloquear').addEventListener('click', desbloquear);
 // Tocar em "Listas" na barra estando já no perfil só muda o #: abre "Quero ver"
 window.addEventListener('hashchange', () => {
   if (location.hash === '#listas' && uidDasAbas) selecionarAba('watchlist');

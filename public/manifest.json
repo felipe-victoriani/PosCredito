@@ -1,0 +1,24 @@
+{
+  "name": "PósCréditos",
+  "short_name": "PósCréditos",
+  "description": "Avalie filmes, séries, animes e doramas, descubra onde assistir no Brasil e siga quem tem gosto parecido. A conversa começa quando o filme acaba.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "id": "/index.html",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E0E12",
+  "theme_color": "#0E0E12",
+  "categories": ["entertainment", "social"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Buscar", "url": "/busca.html", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Nova review", "url": "/busca.html?avaliar=1", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

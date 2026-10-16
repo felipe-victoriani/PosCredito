@@ -10,6 +10,8 @@ import { criarAcoesReview } from './acoes-review.js';
 import { usuarioAtual } from './auth.js';
 import { criarCartaoReview } from './cartao-review.js';
 import { definirNaLista, situacaoNasListas } from './lists.js';
+import { semBloqueados } from './moderacao-regras.js';
+import { obterBloqueados } from './moderation.js';
 import {
   formatarNota,
   LIMITES_REVIEW,
@@ -81,7 +83,9 @@ async function carregarReviews({ continuar = false } = {}) {
   try {
     const { itens, cursor } = await listarReviewsDoTitulo(meta.mediaKey, 10, cursorReviews);
     if (!continuar) lista.replaceChildren();
-    lista.append(...itens.map((item) => el('li', {}, [criarCartaoReview(item, { acoes: criarAcoesReview(item.review, usuario) })])));
+    // Reviews de pessoas bloqueadas não aparecem
+    const visiveis = semBloqueados(itens, await obterBloqueados(usuario?.uid));
+    lista.append(...visiveis.map((item) => el('li', {}, [criarCartaoReview(item, { acoes: criarAcoesReview(item.review, usuario, { autor: item.autor }) })])));
     cursorReviews = cursor;
     botaoMais.hidden = !cursor;
 

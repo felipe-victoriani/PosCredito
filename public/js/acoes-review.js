@@ -5,6 +5,7 @@
 // dentro da própria review, carregados só quando a pessoa pede.
 // =====================================================================
 
+import { semBloqueados } from './moderacao-regras.js';
 import { formatarContador } from './perfil-regras.js';
 import { LIMITES_REVIEW, tempoRelativo } from './reviews-regras.js';
 import { comentar, definirCurtida, excluirComentario, jaCurtiu, listarComentarios } from './social.js';
@@ -15,6 +16,18 @@ import { criarAvatar, criarEstado, el, icone, mostrarToast } from './ui.js';
 function irParaLogin() {
   const atual = `${location.pathname.split('/').pop() || 'index.html'}${location.search}`;
   location.href = `perfil.html?voltar=${encodeURIComponent(atual)}`;
+}
+
+/** Bloqueados de quem está logado (vazio sem login ou se falhar). */
+async function obterBloqueadosSemFalhar(usuario) {
+  if (!usuario) return new Set();
+  try {
+    const { obterBloqueados } = await import('./moderation.js');
+    return await obterBloqueados(usuario.uid);
+  } catch (erro) {
+    console.error('[acoes] bloqueados', erro);
+    return new Set();
+  }
 }
 
 /** Botão com ícone + número (curtidas/comentários). */
@@ -36,7 +49,16 @@ function criarItemComentario({ comentario, autor }, { review, usuario, aoExcluir
     : null;
   lixeira?.addEventListener('click', () => aoExcluir(comentario.id));
 
-  return el('li', { classe: 'comentario' }, [
+  // "⋯" (denunciar/bloquear) nos comentários de outras pessoas
+  const opcoes =
+    usuario && comentario.uid !== usuario.uid
+      ? el('button', { classe: 'comentario__apagar', atributos: { type: 'button', 'aria-label': `Mais opções do comentário de ${nome}` } }, [icone('opcoes', { tamanho: 18 })])
+      : null;
+  opcoes?.addEventListener('click', () =>
+    abrirModeracao({ usuario, autor: { uid: comentario.uid, username: autor?.username }, tipo: 'comment', reviewId: review.id, commentId: comentario.id }),
+  );
+
+  return el('li', { classe: 'comentario', atributos: { 'data-autor': comentario.uid } }, [
     criarAvatar({ ...autor, uid: comentario.uid }, 'p'),
     el('div', { classe: 'comentario__corpo' }, [
       el('p', { classe: 'comentario__cabecalho' }, [
@@ -47,8 +69,19 @@ function criarItemComentario({ comentario, autor }, { review, usuario, aoExcluir
       ]),
       el('p', { classe: 'comentario__texto', texto: comentario.text }),
     ]),
-    lixeira,
+    lixeira ?? opcoes,
   ]);
+}
+
+/** Carrega o módulo de moderação só quando alguém usa (e abre o menu). */
+async function abrirModeracao(dados) {
+  try {
+    const { abrirOpcoes } = await import('./moderation.js');
+    abrirOpcoes(dados);
+  } catch (erro) {
+    console.error('[acoes] moderação', erro);
+    mostrarToast('Não foi possível abrir as opções agora.');
+  }
 }
 
 /**
@@ -62,7 +95,9 @@ function criarPainelComentarios({ review, usuario, aoMudarTotal }) {
   async function carregar() {
     lista.replaceChildren(el('li', { classe: 'comentarios__carregando', texto: 'Carregando comentários…' }));
     try {
-      const itens = await listarComentarios(review.id);
+      // Comentários de pessoas bloqueadas não aparecem
+      const [todos, bloqueados] = await Promise.all([listarComentarios(review.id), obterBloqueadosSemFalhar(usuario)]);
+      const itens = semBloqueados(todos, bloqueados, (item) => item.comentario.uid);
       lista.replaceChildren(...itens.map((item) => criarItemComentario(item, { review, usuario, aoExcluir })));
       if (!itens.length) lista.replaceChildren(el('li', { classe: 'comentarios__vazio', texto: 'Nenhum comentário ainda.' }));
     } catch (erro) {
@@ -132,12 +167,34 @@ function criarPainelComentarios({ review, usuario, aoMudarTotal }) {
 
 // ---------- Barra de ações ----------
 
+/** Botão só com ícone (compartilhar, mais opções). */
+function criarBotaoIcone(nomeIcone, rotulo) {
+  return el('button', { classe: 'acao', atributos: { type: 'button', 'aria-label': rotulo } }, [icone(nomeIcone, { tamanho: 22 })]);
+}
+
+/** Gera o card de Stories e compartilha (ou baixa). */
+async function compartilharComoImagem(review, autor, botao) {
+  botao.disabled = true;
+  mostrarToast('Gerando imagem…');
+  try {
+    const { compartilharCard } = await import('./share-card.js');
+    const resultado = await compartilharCard({ review, autor });
+    if (resultado === 'baixado') mostrarToast('Imagem salva. Agora é só postar nos Stories.');
+  } catch (erro) {
+    console.error('[acoes] card', erro);
+    mostrarToast('Não foi possível gerar a imagem agora.');
+  } finally {
+    botao.disabled = false;
+  }
+}
+
 /**
- * Barra com curtir e comentar para uma review.
+ * Barra com curtir, comentar, compartilhar e "⋯" para uma review.
  * @param {object} review - precisa de id, uid, likeCount, commentCount
  * @param {object|null} usuario - pessoa logada (ou null)
+ * @param {{autor?: {uid?: string, username: string}|null}} [opcoes] - autor da review (para o card e a moderação)
  */
-export function criarAcoesReview(review, usuario) {
+export function criarAcoesReview(review, usuario, { autor = null } = {}) {
   let curtido = false;
   let totalCurtidas = review.likeCount ?? 0;
   let totalComentarios = review.commentCount ?? 0;
@@ -148,7 +205,20 @@ export function criarAcoesReview(review, usuario) {
   comentarios.botao.setAttribute('aria-expanded', 'false');
   comentarios.botao.setAttribute('aria-controls', `comentarios-${review.id}`);
 
-  const barra = el('div', { classe: 'acoes-review' }, [curtir.botao, comentarios.botao]);
+  // Compartilhar como imagem (precisa do @ de quem escreveu)
+  const compartilhar = autor?.username ? criarBotaoIcone('compartilhar', 'Compartilhar review como imagem') : null;
+  compartilhar?.addEventListener('click', () => compartilharComoImagem(review, autor, compartilhar));
+
+  // "⋯": denunciar/bloquear (não aparece na própria review)
+  const ehPropria = usuario?.uid === review.uid;
+  const opcoes = ehPropria ? null : criarBotaoIcone('opcoes', 'Mais opções');
+  opcoes?.classList.add('acao--fim');
+  opcoes?.addEventListener('click', () => {
+    if (!usuario) return irParaLogin();
+    abrirModeracao({ usuario, autor: { uid: review.uid, username: autor?.username }, tipo: 'review', reviewId: review.id });
+  });
+
+  const barra = el('div', { classe: 'acoes-review' }, [curtir.botao, comentarios.botao, compartilhar, opcoes]);
   const raiz = el('div', { classe: 'acoes-review__raiz' }, [barra]);
 
   /** Desenha o estado de curtida. */
