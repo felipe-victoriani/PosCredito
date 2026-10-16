@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PósCréditos · A conversa começa quando o filme acaba.</title>
+  <meta name="description" content="Avalie e comente filmes, séries, animes e doramas, descubra onde assistir no Brasil e siga quem tem gosto parecido com o seu.">
+  <meta name="theme-color" content="#0E0E12">
+  <meta name="color-scheme" content="dark">
+
+  <!-- Ícones -->
+  <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- Open Graph (trocar o domínio pelo de produção quando definir) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PósCréditos">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="PósCréditos · A conversa começa quando o filme acaba.">
+  <meta property="og:description" content="A comunidade brasileira de reviews de filmes, séries, animes e doramas.">
+  <meta property="og:url" content="https://poscreditos.vercel.app/">
+  <meta property="og:image" content="https://poscreditos.vercel.app/img/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Logo do PósCréditos com o slogan A conversa começa quando o filme acaba.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PósCréditos · A conversa começa quando o filme acaba.">
+  <meta name="twitter:description" content="A comunidade brasileira de reviews de filmes, séries, animes e doramas.">
+  <meta name="twitter:image" content="https://poscreditos.vercel.app/img/og-image.png">
+
+  <!-- Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://image.tmdb.org">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&display=swap">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/componentes.css">
+
+  <script type="module" src="js/feed.js"></script>
+</head>
+<body>
+  <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
+  <!-- Topo com o logo -->
+  <header class="topo">
+    <a class="marca" href="index.html" aria-label="PósCréditos, página inicial">
+      <!-- Símbolo: reticências subindo dentro do círculo amarelo -->
+      <svg class="marca__simbolo" viewBox="0 0 96 96" width="40" height="40" aria-hidden="true" focusable="false">
+        <circle cx="48" cy="48" r="48" fill="#F5B700"/>
+        <g fill="#0E0E12">
+          <circle cx="28" cy="62" r="7.5"/>
+          <circle cx="48" cy="48" r="7.5"/>
+          <circle cx="68" cy="34" r="7.5"/>
+        </g>
+      </svg>
+      <span class="marca__texto" aria-hidden="true">Pós<span class="marca__ponto">·</span>Créditos</span>
+    </a>
+    <!-- Slogan logo abaixo da marca (referência C) -->
+    <p class="topo__slogan">A conversa começa quando o filme acaba.</p>
+  </header>
+
+  <main id="conteudo" class="container">
+    <h1 class="visualmente-oculto">PósCréditos: o que está em alta</h1>
+
+    <section class="secao" aria-labelledby="titulo-em-alta">
+      <h2 id="titulo-em-alta" class="secao__titulo">Em alta na semana</h2>
+
+      <!-- Filtros de tipo (aria-pressed indica o ativo) -->
+      <div id="filtros-em-alta" class="chips" role="group" aria-label="Filtrar por tipo">
+        <button type="button" class="chip" data-filtro="tudo" aria-pressed="true">Tudo</button>
+        <button type="button" class="chip" data-filtro="filme" aria-pressed="false">Filmes</button>
+        <button type="button" class="chip" data-filtro="serie" aria-pressed="false">Séries</button>
+        <button type="button" class="chip" data-filtro="anime" aria-pressed="false">Animes</button>
+        <button type="button" class="chip" data-filtro="dorama" aria-pressed="false">Doramas</button>
+      </div>
+
+      <ul id="grade-em-alta" class="grade-posters" aria-label="Títulos em alta"></ul>
+      <button id="carregar-mais" class="botao botao--secundario botao--bloco" type="button" hidden>Carregar mais</button>
+    </section>
+  </main>
+
+  <footer class="rodape"></footer>
+  <nav class="nav-inferior" aria-label="Navegação principal" data-ativo="inicio"></nav>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Título · PósCréditos</title>
+  <meta name="description" content="Sinopse, elenco, trailer, onde assistir no Brasil e reviews da comunidade PósCréditos.">
+  <meta name="theme-color" content="#0E0E12">
+  <meta name="color-scheme" content="dark">
+
+  <!-- Ícones -->
+  <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- Open Graph genérico: a página é montada no navegador, então o
+       preview por título exigiria renderização no servidor (fase futura) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PósCréditos">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="Onde assistir e o que a comunidade achou · PósCréditos">
+  <meta property="og:description" content="Sinopse, elenco, trailer, onde assistir no Brasil e reviews da comunidade.">
+  <meta property="og:url" content="https://poscreditos.vercel.app/titulo.html">
+  <meta property="og:image" content="https://poscreditos.vercel.app/img/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Logo do PósCréditos com o slogan A conversa começa quando o filme acaba.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PósCréditos">
+  <meta name="twitter:description" content="Sinopse, elenco, trailer, onde assistir no Brasil e reviews da comunidade.">
+  <meta name="twitter:image" content="https://poscreditos.vercel.app/img/og-image.png">
+
+  <!-- Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://image.tmdb.org">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&display=swap">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/componentes.css">
+
+  <script type="module" src="js/titulo.js"></script>
+</head>
+<body>
+  <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
+  <!-- Botões flutuantes sobre a capa -->
+  <header class="topo-flutuante">
+    <button id="botao-voltar" class="botao-icone" type="button" aria-label="Voltar">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="m15 18-6-6 6-6"/>
+      </svg>
+    </button>
+    <button id="botao-compartilhar" class="botao-icone" type="button" aria-label="Compartilhar título">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="M12 2v13"/><path d="m16 6-4-4-4 4"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      </svg>
+    </button>
+  </header>
+
+  <main id="conteudo" class="pagina-titulo" aria-busy="true">
+    <div id="corpo-titulo" class="carregando">
+      <!-- Capa de fundo (backdrop w780) -->
+      <div class="titulo-hero">
+        <img id="titulo-fundo" class="titulo-hero__img" alt="" width="780" height="439" hidden>
+      </div>
+
+      <div class="container">
+        <!-- Pôster + nome + tipo/ano -->
+        <section class="titulo-cabecalho" aria-labelledby="titulo-nome">
+          <div id="titulo-poster" class="titulo-cabecalho__poster">
+            <div class="poster esqueleto"></div>
+          </div>
+          <div class="titulo-cabecalho__info">
+            <h1 id="titulo-nome" class="titulo-cabecalho__nome"><span class="esqueleto esqueleto--texto"></span></h1>
+            <p id="titulo-original" class="titulo-cabecalho__original" hidden></p>
+            <p id="titulo-meta" class="titulo-cabecalho__meta"></p>
+          </div>
+        </section>
+
+        <ul id="titulo-generos" class="pilulas" aria-label="Gêneros"></ul>
+
+        <!-- Nota da comunidade (ligada ao Firebase na Fase 3) -->
+        <section class="nota-comunidade" aria-label="Nota da comunidade">
+          <p class="nota-comunidade__valor" aria-hidden="true">–</p>
+          <div>
+            <p class="nota-comunidade__texto">Ainda sem notas da comunidade</p>
+            <p class="nota-comunidade__sub">Seja a primeira pessoa a avaliar.</p>
+          </div>
+        </section>
+
+        <!-- Ações (ativadas na Fase 3, com login) -->
+        <div class="acoes-titulo">
+          <button class="botao botao--primario" type="button" disabled>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>
+            Avaliar
+          </button>
+          <button class="botao botao--secundario" type="button" disabled>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+            Quero ver
+          </button>
+          <button class="botao botao--secundario" type="button" disabled>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>
+            Já vi
+          </button>
+        </div>
+        <p class="acoes-titulo__aviso">Avaliar e salvar em listas chega junto com o login.</p>
+
+        <!-- Onde assistir no Brasil (dados JustWatch via TMDB) -->
+        <section class="secao" aria-labelledby="h-onde-assistir">
+          <h2 id="h-onde-assistir" class="secao__titulo">Onde assistir</h2>
+          <ul id="lista-provedores" class="provedores">
+            <li class="esqueleto esqueleto--provedor" aria-hidden="true"></li>
+            <li class="esqueleto esqueleto--provedor" aria-hidden="true"></li>
+          </ul>
+          <p class="credito-justwatch">
+            Dados de streaming:
+            <a href="https://www.justwatch.com/br" target="_blank" rel="noopener noreferrer">JustWatch</a>
+            <a id="link-opcoes" class="credito-justwatch__opcoes" target="_blank" rel="noopener noreferrer" hidden>Ver todas as opções</a>
+          </p>
+        </section>
+
+        <!-- Sinopse com "ler mais" -->
+        <section class="secao" aria-labelledby="h-sinopse">
+          <h2 id="h-sinopse" class="secao__titulo">Sinopse</h2>
+          <p id="sinopse" class="sinopse"></p>
+          <button id="ler-mais" class="botao-texto" type="button" aria-controls="sinopse" aria-expanded="false" hidden>Ler mais</button>
+        </section>
+
+        <section id="secao-trailer" class="secao" aria-labelledby="h-trailer" hidden>
+          <h2 id="h-trailer" class="secao__titulo">Trailer</h2>
+          <div id="trailer" class="trailer"></div>
+        </section>
+
+        <section id="secao-elenco" class="secao" aria-labelledby="h-elenco" hidden>
+          <h2 id="h-elenco" class="secao__titulo">Elenco</h2>
+          <ul id="lista-elenco" class="carrossel"></ul>
+        </section>
+
+        <section id="secao-semelhantes" class="secao" aria-labelledby="h-semelhantes" hidden>
+          <h2 id="h-semelhantes" class="secao__titulo">Semelhantes</h2>
+          <ul id="lista-semelhantes" class="carrossel carrossel--posters"></ul>
+        </section>
+      </div>
+    </div>
+
+    <!-- Estado de erro (link inválido, título inexistente, falha de rede) -->
+    <div id="erro-titulo" class="container erro-titulo" hidden></div>
+  </main>
+
+  <footer class="rodape"></footer>
+  <nav class="nav-inferior" aria-label="Navegação principal" data-ativo=""></nav>
+</body>
+</html>

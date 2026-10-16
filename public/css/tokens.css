@@ -1,0 +1,85 @@
+/* =====================================================================
+   tokens.css — design tokens do PósCréditos
+   ---------------------------------------------------------------------
+   Cores, tipografia, espaçamentos, raios e camadas. Todo o resto do CSS
+   usa só estas variáveis (nunca hex solto nos componentes).
+   ===================================================================== */
+
+/* Ordem das camadas: quem vem depois ganha, sem guerra de !important */
+@layer reset, base, componentes, paginas, utilitarios;
+
+:root {
+  color-scheme: dark;
+
+  /* ---------- Cores da marca ---------- */
+  --cor-fundo: #0E0E12;          /* fundo da página (60%) */
+  --cor-superficie: #17171D;     /* cards, campos, barra inferior (30%) */
+  --cor-superficie-2: #22222B;   /* selos, chips, elementos sobre cards */
+  --cor-borda: #2C2C36;          /* contornos sutis */
+  --cor-texto: #F4F1EA;          /* texto principal (contraste ~17:1) */
+  --cor-texto-2: #A8A49C;        /* texto secundário (contraste ~7.6:1) */
+  --cor-destaque: #F5B700;       /* amarelo-pipoca: CTA e estado ativo (10%) */
+  --cor-destaque-texto: #0E0E12; /* texto sobre o amarelo (contraste ~10:1) */
+  --cor-perigo: #FF7A6B;         /* erros (sempre com ícone/texto junto) */
+
+  /* Fundo translúcido dos botões sobre imagem */
+  --cor-vidro: color-mix(in oklch, var(--cor-fundo) 72%, transparent);
+
+  /* ---------- Tipografia ---------- */
+  --fonte-ui: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fonte-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Escala ~1.25 com clamp() para crescer suave em telas maiores */
+  --texto-xs: 0.75rem;                                   /* 12px rótulos mono */
+  --texto-sm: 0.875rem;                                  /* 14px */
+  --texto-md: 1rem;                                      /* 16px corpo */
+  --texto-lg: clamp(1.125rem, 1.05rem + 0.4vw, 1.25rem); /* 18–20px */
+  --texto-xl: clamp(1.375rem, 1.2rem + 0.8vw, 1.625rem); /* 22–26px */
+  --texto-2xl: clamp(1.75rem, 1.4rem + 1.6vw, 2.25rem);  /* 28–36px */
+
+  --peso-normal: 400;
+  --peso-medio: 500;
+  --peso-forte: 700;
+  --peso-extra: 800;
+
+  /* ---------- Espaçamento (base 4px) ---------- */
+  --esp-1: 0.25rem;
+  --esp-2: 0.5rem;
+  --esp-3: 0.75rem;
+  --esp-4: 1rem;
+  --esp-5: 1.25rem;
+  --esp-6: 1.5rem;
+  --esp-8: 2rem;
+  --esp-10: 2.5rem;
+
+  /* Margem lateral das páginas */
+  --gutter: var(--esp-5);
+  /* Largura máxima da coluna de conteúdo (app mobile-first) */
+  --largura-max: 42rem;
+
+  /* ---------- Raios (escala pequena, uso intencional) ---------- */
+  --raio-sm: 6px;    /* selos */
+  --raio-md: 12px;   /* pôsteres, campos */
+  --raio-lg: 20px;   /* cards, blocos */
+  --raio-pilula: 999px;
+
+  /* ---------- Toque e camadas ---------- */
+  --alvo-toque: 44px;            /* mínimo WCAG/Apple para toque */
+  --altura-nav: 4.5rem;          /* barra inferior */
+  --z-topo: 10;
+  --z-nav: 20;
+  --z-toast: 30;
+
+  /* ---------- Movimento ---------- */
+  --duracao-rapida: 120ms;
+  --duracao-media: 220ms;
+  --curva-saida: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Quem pede menos movimento não vê transições */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duracao-rapida: 0ms;
+    --duracao-media: 0ms;
+  }
+}

@@ -1,0 +1,24 @@
+# Dependências
+node_modules/
+
+# Segredos locais (TMDB_API_KEY etc.) — nunca commitar
+.env
+.env.*
+!.env.example
+
+# Vercel CLI
+.vercel/
+
+# Firebase emulador
+*-debug.log
+.firebase/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Sistema
+.DS_Store
+Thumbs.db

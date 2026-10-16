@@ -1,0 +1,25 @@
+{
+  "name": "poscreditos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PósCréditos — comunidade de reviews de filmes, séries, animes e doramas. A conversa começa quando o filme acaba.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:rules": "firebase emulators:exec --only database --project demo-poscreditos \"vitest run --config vitest.rules.config.js\"",
+    "test:e2e": "playwright test",
+    "test:tudo": "npm run test && npm run test:rules && npm run test:e2e",
+    "icones": "node tools/gerar-icones.mjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "@playwright/test": "^1.64.1",
+    "firebase": "^13.0.0",
+    "vitest": "^5.0.5"
+  }
+}

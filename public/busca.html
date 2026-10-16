@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Buscar · PósCréditos</title>
+  <meta name="description" content="Busque filmes, séries, animes e doramas e veja onde assistir no Brasil.">
+  <meta name="theme-color" content="#0E0E12">
+  <meta name="color-scheme" content="dark">
+
+  <!-- Ícones -->
+  <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- Open Graph (trocar o domínio pelo de produção quando definir) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PósCréditos">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="Buscar filmes, séries, animes e doramas · PósCréditos">
+  <meta property="og:description" content="Encontre o título, veja onde assistir no Brasil e o que a comunidade achou.">
+  <meta property="og:url" content="https://poscreditos.vercel.app/busca.html">
+  <meta property="og:image" content="https://poscreditos.vercel.app/img/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Logo do PósCréditos com o slogan A conversa começa quando o filme acaba.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Buscar · PósCréditos">
+  <meta name="twitter:description" content="Encontre o título, veja onde assistir no Brasil e o que a comunidade achou.">
+  <meta name="twitter:image" content="https://poscreditos.vercel.app/img/og-image.png">
+
+  <!-- Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://image.tmdb.org">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&display=swap">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/componentes.css">
+
+  <script type="module" src="js/busca.js"></script>
+</head>
+<body>
+  <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
+  <main id="conteudo" class="container pagina-busca">
+    <h1 class="titulo-pagina">Buscar</h1>
+    <p id="dica-avaliar" class="dica" hidden>Escolha o título que você quer avaliar.</p>
+
+    <!-- Campo de busca (Enter busca na hora; digitando, busca após uma pausa) -->
+    <search>
+      <form id="form-busca" class="campo-busca" action="busca.html">
+        <label for="campo-busca" class="visualmente-oculto">Buscar filmes, séries, animes e doramas</label>
+        <svg class="campo-busca__icone" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0"/>
+          <path d="m21 21-4.3-4.3"/>
+        </svg>
+        <input id="campo-busca" name="q" type="search" placeholder="Filmes, séries, animes, doramas…"
+               autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" maxlength="100">
+      </form>
+    </search>
+
+    <div id="filtros-busca" class="chips" role="group" aria-label="Filtrar resultados por tipo" hidden></div>
+    <p id="contagem-resultados" class="rotulo" aria-live="polite"></p>
+
+    <ul id="resultados" class="lista-resultados" aria-label="Resultados da busca"></ul>
+    <button id="mais-resultados" class="botao botao--secundario botao--bloco" type="button" hidden>Mostrar mais resultados</button>
+
+    <!-- Exibida enquanto o campo está vazio -->
+    <section id="secao-em-alta" class="secao" aria-labelledby="titulo-em-alta" hidden>
+      <h2 id="titulo-em-alta" class="rotulo">Em alta na semana</h2>
+      <ul id="grade-em-alta" class="grade-posters"></ul>
+    </section>
+  </main>
+
+  <footer class="rodape"></footer>
+  <nav class="nav-inferior" aria-label="Navegação principal" data-ativo="busca"></nav>
+</body>
+</html>

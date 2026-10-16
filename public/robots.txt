@@ -1,0 +1,8 @@
+# PósCréditos — páginas públicas podem ser indexadas.
+# A API interna não deve ser rastreada.
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# Trocar pelo domínio de produção quando definir
+Sitemap: https://poscreditos.vercel.app/sitemap.xml
