@@ -5,7 +5,7 @@
 // nunca innerHTML. Ícones são SVG montados com createElementNS.
 // =====================================================================
 
-import { fotoSegura, iniciais, indiceCorAvatar } from './perfil-regras.js';
+import { formatarContador, fotoSegura, iniciais, indiceCorAvatar } from './perfil-regras.js';
 import { anoDe, classificarTipo, criarMediaKey, ROTULO_TIPO, tituloDe, urlImagem } from './tmdb.js';
 
 // ---------- Criação de elementos ----------
@@ -230,6 +230,26 @@ export function criarAvatar(perfil, tamanho = 'm') {
   });
   img.addEventListener('error', () => img.replaceWith(criarIniciais()), { once: true });
   return img;
+}
+
+/**
+ * Linha de pessoa (busca e listas de seguidores): avatar + nome + @ +
+ * seguidores, levando ao perfil.
+ */
+export function criarLinhaPessoa(perfil) {
+  const seguidores = perfil.stats?.followers ?? 0;
+  return el('li', {}, [
+    el('a', { classe: 'resultado resultado--pessoa', atributos: { href: `perfil.html?u=${encodeURIComponent(perfil.username)}` } }, [
+      criarAvatar(perfil, 'm'),
+      el('div', { classe: 'resultado__info' }, [
+        el('span', { classe: 'resultado__nome', texto: perfil.displayName }),
+        el('span', {
+          classe: 'resultado__mono',
+          texto: `@${perfil.username} · ${formatarContador(seguidores)} ${seguidores === 1 ? 'seguidor' : 'seguidores'}`,
+        }),
+      ]),
+    ]),
+  ]);
 }
 
 // ---------- Estados (carregando, vazio, erro) ----------

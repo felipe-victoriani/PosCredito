@@ -96,12 +96,21 @@
 
       <p id="perfil-bio" class="perfil-bio"></p>
 
-      <!-- Contadores: número em cima, rótulo embaixo -->
-      <dl class="contadores">
-        <div class="contadores__item"><dt>Vistos</dt><dd id="cont-vistos">0</dd></div>
-        <div class="contadores__item"><dt>Seguidores</dt><dd id="cont-seguidores">0</dd></div>
-        <div class="contadores__item"><dt>Seguindo</dt><dd id="cont-seguindo">0</dd></div>
-      </dl>
+      <!-- Contadores: número em cima, rótulo embaixo. Tocar abre a lista -->
+      <div class="contadores">
+        <button id="botao-vistos" class="contadores__item" type="button" aria-controls="painel-watched">
+          <span id="cont-vistos" class="contadores__numero">0</span>
+          <span class="contadores__rotulo">Vistos</span>
+        </button>
+        <button id="botao-seguidores" class="contadores__item" type="button" aria-haspopup="dialog">
+          <span id="cont-seguidores" class="contadores__numero">0</span>
+          <span class="contadores__rotulo">Seguidores</span>
+        </button>
+        <button id="botao-seguindo" class="contadores__item" type="button" aria-haspopup="dialog">
+          <span id="cont-seguindo" class="contadores__numero">0</span>
+          <span class="contadores__rotulo">Seguindo</span>
+        </button>
+      </div>
 
       <div class="acoes-perfil">
         <button id="botao-editar" class="botao botao--secundario" type="button" hidden>Editar perfil</button>
@@ -140,6 +149,19 @@
 
     <div id="area-erro" class="erro-titulo" hidden></div>
   </main>
+
+  <!-- Lista de Seguidores / Seguindo (modal nativo) -->
+  <dialog id="dialogo-pessoas" class="dialogo" aria-labelledby="titulo-pessoas">
+    <div class="dialogo__form dialogo__form--lista">
+      <div class="dialogo__topo">
+        <h2 id="titulo-pessoas" class="dialogo__titulo">Seguindo</h2>
+        <button id="fechar-pessoas" class="botao-icone botao-icone--plano" type="button" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <ul id="lista-pessoas" class="lista-resultados" aria-labelledby="titulo-pessoas" aria-live="polite"></ul>
+    </div>
+  </dialog>
 
   <!-- Edição de perfil (modal nativo) -->
   <dialog id="dialogo-editar" class="dialogo" aria-labelledby="titulo-editar">

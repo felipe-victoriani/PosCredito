@@ -16,7 +16,7 @@ import {
   tmdbGet,
 } from './tmdb.js';
 import {
-  criarAvatar,
+  criarLinhaPessoa,
   criarCartaoPoster,
   criarEsqueletos,
   criarEstado,
@@ -27,8 +27,6 @@ import {
   linkTitulo,
   mensagemErro,
 } from './ui.js';
-
-import { formatarContador } from './perfil-regras.js';
 
 // Espera após a última tecla antes de buscar (ms)
 const DEBOUNCE_MS = 350;
@@ -63,23 +61,6 @@ let temporizador;
 let geracao = 0;
 
 // ---------- Renderização ----------
-
-/** Linha de pessoa: avatar + nome + @ + seguidores. */
-function criarLinhaPessoa(perfil) {
-  const seguidores = perfil.stats?.followers ?? 0;
-  return el('li', {}, [
-    el('a', { classe: 'resultado resultado--pessoa', atributos: { href: `perfil.html?u=${encodeURIComponent(perfil.username)}` } }, [
-      criarAvatar(perfil, 'm'),
-      el('div', { classe: 'resultado__info' }, [
-        el('span', { classe: 'resultado__nome', texto: perfil.displayName }),
-        el('span', {
-          classe: 'resultado__mono',
-          texto: `@${perfil.username} · ${formatarContador(seguidores)} ${seguidores === 1 ? 'seguidor' : 'seguidores'}`,
-        }),
-      ]),
-    ]),
-  ]);
-}
 
 /** Linha de resultado: pôster + nome + selo + ano (+ título original). */
 function criarLinhaResultado({ item, tipo, perfil }) {

@@ -1132,24 +1132,42 @@
   }
   .perfil-bio { margin-top: var(--esp-5); overflow-wrap: anywhere; }
 
-  /* Contadores: número em cima (dd), rótulo embaixo (dt) */
+  /* Contadores: botões com número em cima e rótulo embaixo */
   .contadores {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     margin-top: var(--esp-5);
-    padding-block: var(--esp-5);
+    padding-block: var(--esp-3);
     background: var(--cor-superficie);
     border-radius: var(--raio-lg);
   }
   .contadores__item {
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 0.125rem;
-    & + & { border-left: 1px solid var(--cor-borda); }
-    & dd { font-size: var(--texto-xl); font-weight: var(--peso-extra); }
-    & dt { font-size: var(--texto-sm); color: var(--cor-texto-2); }
+    min-height: 4rem;
+    border-radius: var(--raio-md);
+    transition: background-color var(--duracao-rapida);
+    &:hover { background: var(--cor-superficie-2); }
+    /* Divisória entre os itens */
+    & + & { position: relative; }
+    & + &::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      border-left: 1px solid var(--cor-borda);
+    }
   }
+  .contadores__numero { font-size: var(--texto-xl); font-weight: var(--peso-extra); }
+  .contadores__rotulo { font-size: var(--texto-sm); color: var(--cor-texto-2); }
+
+  /* Lista de pessoas no diálogo */
+  .dialogo__form--lista { padding-bottom: var(--esp-5); }
+  .esqueleto--linha-pessoa { height: 4.5rem; margin-block: var(--esp-2); }
 
   .acoes-perfil { margin-top: var(--esp-4); & .botao { width: 100%; } }
   /* "Seguindo" com contorno amarelo para diferenciar de "Seguir" */

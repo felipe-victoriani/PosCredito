@@ -8,7 +8,7 @@
 // - Firebase, imagens e fontes de outros domínios: direto da rede.
 // =====================================================================
 
-const CACHE_NAME = "poscreditos-v1";
+const CACHE_NAME = "poscreditos-v2";
 const CACHE_API = "poscreditos-api";
 // Quantas respostas do catálogo guardar para uso offline
 const MAX_RESPOSTAS_API = 80;

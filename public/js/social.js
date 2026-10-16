@@ -63,14 +63,30 @@ export function definirSeguindo(uid, alvo, sim) {
   });
 }
 
-/** uids que a pessoa segue (até o limite do feed). */
-export async function listarSeguidos(uid) {
-  const instantaneo = await get(query(ref(db, `follows/${uid}`), orderByKey(), limitToFirst(MAX_SEGUIDOS_NO_FEED)));
+/** Chaves (uids) de follows/{uid} ou followers/{uid}, até o limite. */
+async function listarUids(no, uid, limite) {
+  const instantaneo = await get(query(ref(db, `${no}/${uid}`), orderByKey(), limitToFirst(limite)));
   const uids = [];
   instantaneo.forEach((filho) => {
     uids.push(filho.key);
   });
   return uids;
+}
+
+/** uids que a pessoa segue (até o limite do feed). */
+export function listarSeguidos(uid) {
+  return listarUids('follows', uid, MAX_SEGUIDOS_NO_FEED);
+}
+
+/**
+ * Perfis da lista "Seguindo" ou "Seguidores" de alguém.
+ * @param {'seguindo'|'seguidores'} tipo
+ * @returns {Promise<object[]>} perfis públicos (quem apagou a conta some)
+ */
+export async function listarPessoasDaRede(uid, tipo, limite = 100) {
+  const uids = await listarUids(tipo === 'seguindo' ? 'follows' : 'followers', uid, limite);
+  const perfis = await Promise.all(uids.map(obterPerfil));
+  return perfis.filter(Boolean).sort((a, b) => a.displayName.localeCompare(b.displayName, 'pt-BR'));
 }
 
 // ---------- Curtidas ----------

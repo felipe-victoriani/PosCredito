@@ -17,13 +17,22 @@ import {
 import { criarAcoesReview } from './acoes-review.js';
 import { criarCartaoReview } from './cartao-review.js';
 import { definirBloqueio, obterBloqueados } from './moderation.js';
-import { definirSeguindo, estaSeguindo } from './social.js';
+import { definirSeguindo, estaSeguindo, listarPessoasDaRede } from './social.js';
 import { criarSeletor, GENEROS, lerInteresses, lerSelecao, montarInteresses, TIPOS } from './interesses.js';
 import { obterLista } from './lists.js';
 import { formatarContador, LIMITES, normalizarUsername } from './perfil-regras.js';
 import { destinoSeguro } from './reviews-regras.js';
 import { listarReviewsDoUsuario } from './reviews.js';
-import { criarAvatar, criarCartaoGuardado, criarEsqueletos, criarEstado, el, iniciarPagina, mostrarToast } from './ui.js';
+import {
+  criarAvatar,
+  criarCartaoGuardado,
+  criarEsqueletos,
+  criarEstado,
+  criarLinhaPessoa,
+  el,
+  iniciarPagina,
+  mostrarToast,
+} from './ui.js';
 
 // Elementos
 const $ = (id) => document.getElementById(id);
@@ -168,6 +177,38 @@ async function alternarSeguir() {
     mostrarToast('Não foi possível agora. Tente de novo.');
   } finally {
     botao.disabled = false;
+  }
+}
+
+// ---------- Listas de Seguidores / Seguindo ----------
+
+/** Abre a janela com as pessoas que o perfil segue ou que o seguem. */
+async function abrirListaPessoas(tipo) {
+  const dialogo = $('dialogo-pessoas');
+  const lista = $('lista-pessoas');
+  const uid = perfilAtual.uid;
+  const primeiro = ehProprio ? 'Você' : `@${perfilAtual.username}`;
+
+  $('titulo-pessoas').textContent = tipo === 'seguindo' ? 'Seguindo' : 'Seguidores';
+  lista.replaceChildren(...criarEsqueletos(3, 'esqueleto esqueleto--linha-pessoa'));
+  lista.setAttribute('aria-busy', 'true');
+  dialogo.showModal();
+
+  try {
+    const pessoas = await listarPessoasDaRede(uid, tipo);
+    if (uid !== perfilAtual.uid || !dialogo.open) return; // fechou ou trocou de perfil
+    lista.replaceChildren(...pessoas.map(criarLinhaPessoa));
+    if (!pessoas.length) {
+      const mensagem = tipo === 'seguindo' ? `${primeiro} ainda não segue ninguém.` : `${primeiro} ainda não tem seguidores.`;
+      lista.replaceChildren(el('li', {}, [criarEstado({ tipo: 'vazio', mensagem })]));
+    }
+  } catch (erro) {
+    console.error('[perfil] lista de pessoas', tipo, erro);
+    lista.replaceChildren(
+      el('li', {}, [criarEstado({ tipo: 'erro', mensagem: 'Não foi possível carregar a lista agora.', acao: { texto: 'Tentar de novo', onClick: () => abrirListaPessoas(tipo) } })]),
+    );
+  } finally {
+    lista.removeAttribute('aria-busy');
   }
 }
 
@@ -424,6 +465,15 @@ $('abas-perfil').addEventListener('keydown', aoTeclarNasAbas);
 $('mais-reviews-perfil').addEventListener('click', () => carregarReviews({ continuar: true }));
 $('botao-seguir').addEventListener('click', alternarSeguir);
 $('botao-desbloquear').addEventListener('click', desbloquear);
+// Contadores: Seguidores/Seguindo abrem a lista; Vistos abre a aba "Já vi"
+$('botao-seguidores').addEventListener('click', () => abrirListaPessoas('seguidores'));
+$('botao-seguindo').addEventListener('click', () => abrirListaPessoas('seguindo'));
+$('botao-vistos').addEventListener('click', () => {
+  if ($('abas-perfil').hidden) return; // perfil bloqueado: abas escondidas
+  selecionarAba('watched', { focar: true });
+  $('abas-perfil').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('fechar-pessoas').addEventListener('click', () => $('dialogo-pessoas').close());
 // Tocar em "Listas" na barra estando já no perfil só muda o #: abre "Quero ver"
 window.addEventListener('hashchange', () => {
   if (location.hash === '#listas' && uidDasAbas) selecionarAba('watchlist');

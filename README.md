@@ -122,6 +122,7 @@ Na primeira execução o `vercel dev` pergunta as configurações do projeto: ac
 4. Toque no balão → escreva um comentário → **Enviar**. O contador sobe.
 5. Apague: o autor apaga o próprio comentário; a dona da review apaga qualquer comentário dela. Terceiros não veem a lixeira.
 6. Deslogado: curtir/comentar/seguir levam ao login e voltam para a mesma página.
+7. No perfil, toque nos contadores: **Seguidores** e **Seguindo** abrem a lista de pessoas (tocar num nome abre o perfil); **Vistos** abre a aba "Já vi".
 
 ### Testar a Fase 5 manualmente
 
