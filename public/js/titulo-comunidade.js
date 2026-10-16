@@ -6,6 +6,7 @@
 // import dinâmico: se o Firebase falhar, o resto da página continua.
 // =====================================================================
 
+import { criarAcoesReview } from './acoes-review.js';
 import { usuarioAtual } from './auth.js';
 import { criarCartaoReview } from './cartao-review.js';
 import { definirNaLista, situacaoNasListas } from './lists.js';
@@ -80,7 +81,7 @@ async function carregarReviews({ continuar = false } = {}) {
   try {
     const { itens, cursor } = await listarReviewsDoTitulo(meta.mediaKey, 10, cursorReviews);
     if (!continuar) lista.replaceChildren();
-    lista.append(...itens.map((item) => el('li', {}, [criarCartaoReview(item)])));
+    lista.append(...itens.map((item) => el('li', {}, [criarCartaoReview(item, { acoes: criarAcoesReview(item.review, usuario) })])));
     cursorReviews = cursor;
     botaoMais.hidden = !cursor;
 
@@ -297,12 +298,13 @@ export async function iniciarComunidade({ detalhes, mediaType }) {
   $('cancelar-exclusao').addEventListener('click', () => $('dialogo-confirmar').close());
   $('confirmar-exclusao').addEventListener('click', confirmarExclusao);
 
-  // Dados públicos não dependem de login: começam já
+  // A nota é pública: começa já
   carregarNota();
-  carregarReviews();
 
-  // Sessão (não precisa de rede): libera os botões
+  // Sessão (restaurada localmente, sem rede): libera os botões.
+  // As reviews esperam por ela para saber se a pessoa curtiu cada uma.
   usuario = await usuarioAtual();
+  carregarReviews();
   for (const id of ['botao-avaliar', ...Object.values(BOTOES_LISTA)]) $(id).disabled = false;
   await carregarSituacaoPessoal();
 

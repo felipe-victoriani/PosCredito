@@ -36,6 +36,7 @@ export {
   orderByChild,
   orderByKey,
   orderByValue,
+  push,
   query,
   ref,
   runTransaction,

@@ -14,7 +14,9 @@ import {
   sair,
   usuarioAtual,
 } from './auth.js';
+import { criarAcoesReview } from './acoes-review.js';
 import { criarCartaoReview } from './cartao-review.js';
+import { definirSeguindo, estaSeguindo } from './social.js';
 import { criarSeletor, GENEROS, lerInteresses, lerSelecao, montarInteresses, TIPOS } from './interesses.js';
 import { obterLista } from './lists.js';
 import { formatarContador, LIMITES, normalizarUsername } from './perfil-regras.js';
@@ -31,9 +33,10 @@ const areaErro = $('area-erro');
 const dialogo = $('dialogo-editar');
 const formEditar = $('form-editar');
 
-// Perfil exibido agora e se é o da própria pessoa
+// Perfil exibido agora, se é o da própria pessoa, e quem está logado
 let perfilAtual = null;
 let ehProprio = false;
+let usuarioLogado = null;
 // Seletores do diálogo de edição (recriados a cada abertura)
 let seletorTipos;
 let seletorGeneros;
@@ -96,9 +99,11 @@ function mostrarPerfil(perfil, proprio) {
   $('cont-seguidores').textContent = formatarContador(stats.followers);
   $('cont-seguindo').textContent = formatarContador(stats.following);
 
-  // Controles de dono só no próprio perfil
+  // Controles de dono só no próprio perfil; "Seguir" só no dos outros
   $('botao-menu').hidden = !proprio;
   $('botao-editar').hidden = !proprio;
+  $('botao-seguir').hidden = proprio;
+  if (!proprio) atualizarBotaoSeguir();
 
   mostrarArea(areaPerfil);
 
@@ -108,6 +113,56 @@ function mostrarPerfil(perfil, proprio) {
     paineisCarregados.clear();
     // Veio pelo item "Listas" da barra: abre "Quero ver"
     selecionarAba(location.hash === '#listas' ? 'watchlist' : 'reviews');
+  }
+}
+
+// ---------- Seguir ----------
+
+/** Pinta o botão: "Seguir" (amarelo) ou "Seguindo" (contorno). */
+function pintarSeguir(seguindo) {
+  const botao = $('botao-seguir');
+  botao.setAttribute('aria-pressed', String(seguindo));
+  botao.textContent = seguindo ? 'Seguindo' : 'Seguir';
+  botao.classList.toggle('botao--primario', !seguindo);
+  botao.classList.toggle('botao--secundario', seguindo);
+}
+
+/** Descobre se a pessoa logada já segue o perfil aberto. */
+async function atualizarBotaoSeguir() {
+  pintarSeguir(false);
+  if (!usuarioLogado) return;
+  try {
+    pintarSeguir(await estaSeguindo(usuarioLogado.uid, perfilAtual.uid));
+  } catch (erro) {
+    console.error('[perfil] está seguindo?', erro);
+  }
+}
+
+/** Segue/deixa de seguir, com o contador mudando na hora. */
+async function alternarSeguir() {
+  if (!usuarioLogado) {
+    location.href = `perfil.html?voltar=${encodeURIComponent(`perfil.html?u=${perfilAtual.username}`)}`;
+    return;
+  }
+  const botao = $('botao-seguir');
+  const seguir = botao.getAttribute('aria-pressed') !== 'true';
+  const contador = $('cont-seguidores');
+  const antes = perfilAtual.stats?.followers ?? 0;
+  const depois = Math.max(0, antes + (seguir ? 1 : -1));
+
+  pintarSeguir(seguir);
+  contador.textContent = formatarContador(depois);
+  botao.disabled = true;
+  try {
+    await definirSeguindo(usuarioLogado.uid, perfilAtual.uid, seguir);
+    perfilAtual = { ...perfilAtual, stats: { ...perfilAtual.stats, followers: depois } };
+  } catch (erro) {
+    console.error('[perfil] seguir', erro);
+    pintarSeguir(!seguir);
+    contador.textContent = formatarContador(antes);
+    mostrarToast('Não foi possível agora. Tente de novo.');
+  } finally {
+    botao.disabled = false;
   }
 }
 
@@ -154,7 +209,11 @@ async function carregarReviews({ continuar = false } = {}) {
     const { itens, cursor } = await listarReviewsDoUsuario(uid, 10, cursorReviews);
     if (uid !== uidDasAbas) return; // trocou de perfil no meio
     if (!continuar) lista.replaceChildren();
-    lista.append(...itens.map((item) => el('li', {}, [criarCartaoReview(item, { mostrarTitulo: true, mostrarAutor: false })])));
+    lista.append(
+      ...itens.map((item) =>
+        el('li', {}, [criarCartaoReview(item, { mostrarTitulo: true, mostrarAutor: false, acoes: criarAcoesReview(item.review, usuarioLogado) })]),
+      ),
+    );
     cursorReviews = cursor;
     botaoMais.hidden = !cursor;
 
@@ -192,6 +251,7 @@ async function carregar() {
   main.setAttribute('aria-busy', 'true');
   try {
     const usuario = await usuarioAtual();
+    usuarioLogado = usuario;
 
     // Perfil de outra pessoa (ou o próprio acessado pelo @)
     if (usernamePedido) {
@@ -322,6 +382,7 @@ $('abas-perfil').addEventListener('click', (evento) => {
 });
 $('abas-perfil').addEventListener('keydown', aoTeclarNasAbas);
 $('mais-reviews-perfil').addEventListener('click', () => carregarReviews({ continuar: true }));
+$('botao-seguir').addEventListener('click', alternarSeguir);
 // Tocar em "Listas" na barra estando já no perfil só muda o #: abre "Quero ver"
 window.addEventListener('hashchange', () => {
   if (location.hash === '#listas' && uidDasAbas) selecionarAba('watchlist');

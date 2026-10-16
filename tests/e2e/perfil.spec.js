@@ -34,6 +34,21 @@ test.describe('Perfil sem login', () => {
     await expect(page.getByRole('button', { name: 'Entrar com Google' })).toBeVisible({ timeout: 20_000 });
   });
 
+  test('feed: aba "Seguindo" sem login convida a entrar; vitrine funciona', async ({ page }) => {
+    await simularTmdb(page, { permitirFirebase: true });
+    await page.routeWebSocket(/firebaseio\.com/, (ws) => ws.close());
+    await page.route(/firebaseio\.com/, (rota) => rota.abort());
+
+    await page.goto('/index.html');
+    // Vitrine do catálogo (TMDB) independe do Firebase
+    await expect(page.getByRole('list', { name: 'Títulos em alta' }).getByRole('link')).toHaveCount(2);
+
+    await page.getByRole('tab', { name: 'Seguindo' }).click();
+    await expect(page.getByRole('tab', { name: 'Seguindo' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByText('Entre para ver as reviews de quem você segue.')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', 'perfil.html?voltar=index.html');
+  });
+
   test('barra inferior tem Início, Buscar, Nova review, Listas e Perfil', async ({ page }) => {
     await bloquearRecursosExternos(page);
     await page.goto('/busca.html');

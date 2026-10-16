@@ -42,14 +42,26 @@
         "createdAt": {
           ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)"
         },
-        // Contadores: nascem zerados. O dono só move "reviews" e "watched"
-        // de 1 em 1 (junto com a review / a lista "Já vi").
-        // followers/following ficam travados até a Fase 4.
+        // Contadores: nascem zerados e só andam de 1 em 1
         "stats": {
           ".validate": "newData.hasChildren(['followers', 'following', 'reviews', 'watched'])",
-          "$contador": {
-            ".validate": "$contador.matches(/^(followers|following|reviews|watched)$/) && newData.isNumber() && (data.exists() ? (newData.val() === data.val() || ($contador.matches(/^(reviews|watched)$/) && newData.val() >= 0 && (newData.val() === data.val() + 1 || newData.val() === data.val() - 1))) : newData.val() === 0)"
-          }
+          // Seguidores: muda por quem segue/deixa de seguir, e só se a
+          // entrada followers/{dono}/{quem escreve} mudar na mesma escrita
+          "followers": {
+            ".write": "auth != null && auth.uid !== $uid",
+            ".validate": "newData.isNumber() && (!data.exists() ? newData.val() === 0 : (newData.val() === data.val() || (newData.val() === data.val() + 1 && newData.parent().parent().parent().parent().child('followers').child($uid).child(auth.uid).exists() && !root.child('followers').child($uid).child(auth.uid).exists()) || (newData.val() === data.val() - 1 && !newData.parent().parent().parent().parent().child('followers').child($uid).child(auth.uid).exists() && root.child('followers').child($uid).child(auth.uid).exists())))"
+          },
+          // Seguindo, reviews e vistos: só o dono, de 1 em 1
+          "following": {
+            ".validate": "newData.isNumber() && (!data.exists() ? newData.val() === 0 : (newData.val() === data.val() || (auth.uid === $uid && newData.val() >= 0 && (newData.val() === data.val() + 1 || newData.val() === data.val() - 1))))"
+          },
+          "reviews": {
+            ".validate": "newData.isNumber() && (!data.exists() ? newData.val() === 0 : (newData.val() === data.val() || (auth.uid === $uid && newData.val() >= 0 && (newData.val() === data.val() + 1 || newData.val() === data.val() - 1))))"
+          },
+          "watched": {
+            ".validate": "newData.isNumber() && (!data.exists() ? newData.val() === 0 : (newData.val() === data.val() || (auth.uid === $uid && newData.val() >= 0 && (newData.val() === data.val() + 1 || newData.val() === data.val() - 1))))"
+          },
+          "$outro": { ".validate": false }
         },
         "$outro": { ".validate": false }
       }
@@ -73,16 +85,19 @@
     // userReviews e titleStats; as regras exigem que tudo bata.
     // ---------------------------------------------------------------
     "reviews": {
+      // Leitura pública da coleção: o feed "Em alta" lista por createdAt
+      ".read": true,
       ".indexOn": ["createdAt"],
       "$reviewId": {
-        ".read": true,
         // Só a dona escreve. Excluir exige baixar a estatística do título
         // e remover as entradas dos índices na mesma escrita.
         ".write": "auth != null && $reviewId.beginsWith(auth.uid + '_') && (!data.exists() || data.child('uid').val() === auth.uid) && (newData.exists() || (newData.parent().parent().child('titleStats').child(data.child('mediaKey').val()).child('ratingCount').val() === root.child('titleStats').child(data.child('mediaKey').val()).child('ratingCount').val() - 1 && !newData.parent().parent().child('titleReviews').child(data.child('mediaKey').val()).child($reviewId).exists() && !newData.parent().parent().child('userReviews').child(auth.uid).child($reviewId).exists()))",
         // Criar/editar: índices com a mesma data e estatística do título
         // ajustada exatamente pela diferença da nota
-        ".validate": "newData.hasChildren(['uid', 'mediaKey', 'mediaType', 'title', 'tipo', 'rating', 'status', 'spoiler', 'text', 'createdAt', 'updatedAt', 'likeCount', 'commentCount']) && $reviewId === auth.uid + '_' + newData.child('mediaKey').val() && newData.parent().parent().child('titleReviews').child(newData.child('mediaKey').val()).child($reviewId).val() === newData.child('createdAt').val() && newData.parent().parent().child('userReviews').child(auth.uid).child($reviewId).val() === newData.child('createdAt').val() && newData.parent().parent().child('titleStats').child(newData.child('mediaKey').val()).child('ratingSum').val() === (root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingSum').exists() ? root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingSum').val() : 0) + newData.child('rating').val() - (data.exists() ? data.child('rating').val() : 0) && newData.parent().parent().child('titleStats').child(newData.child('mediaKey').val()).child('ratingCount').val() === (root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingCount').exists() ? root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingCount').val() : 0) + (data.exists() ? 0 : 1)",
-        "uid": { ".validate": "newData.val() === auth.uid" },
+        // (usa o uid gravado, não auth.uid: curtir/comentar por outra pessoa
+        // também passa por aqui e não pode quebrar esta checagem)
+        ".validate": "newData.hasChildren(['uid', 'mediaKey', 'mediaType', 'title', 'tipo', 'rating', 'status', 'spoiler', 'text', 'createdAt', 'updatedAt', 'likeCount', 'commentCount']) && $reviewId === newData.child('uid').val() + '_' + newData.child('mediaKey').val() && newData.parent().parent().child('titleReviews').child(newData.child('mediaKey').val()).child($reviewId).val() === newData.child('createdAt').val() && newData.parent().parent().child('userReviews').child(newData.child('uid').val()).child($reviewId).val() === newData.child('createdAt').val() && newData.parent().parent().child('titleStats').child(newData.child('mediaKey').val()).child('ratingSum').val() === (root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingSum').exists() ? root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingSum').val() : 0) + newData.child('rating').val() - (data.exists() ? data.child('rating').val() : 0) && newData.parent().parent().child('titleStats').child(newData.child('mediaKey').val()).child('ratingCount').val() === (root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingCount').exists() ? root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingCount').val() : 0) + (data.exists() ? 0 : 1)",
+        "uid": { ".validate": "data.exists() ? newData.val() === data.val() : newData.val() === auth.uid" },
         "mediaKey": { ".validate": "newData.isString() && newData.val().matches(/^(movie|tv)_[0-9]+$/) && newData.val().length <= 20 && (!data.exists() || data.val() === newData.val())" },
         "mediaType": { ".validate": "newData.isString() && newData.val().matches(/^(movie|tv)$/) && newData.parent().child('mediaKey').val().beginsWith(newData.val() + '_')" },
         "title": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200" },
@@ -96,9 +111,17 @@
         "text": { ".validate": "newData.isString() && newData.val().length <= 2000" },
         "createdAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
         "updatedAt": { ".validate": "newData.val() === now" },
-        // Curtidas e comentários: nascem zerados (a Fase 4 libera +1/-1)
-        "likeCount": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === 0)" },
-        "commentCount": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === 0)" },
+        // Curtidas: qualquer pessoa logada muda +1/-1, mas só junto com a
+        // própria marca em likes/{review}/{uid} na mesma escrita
+        "likeCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && (!data.exists() ? newData.val() === 0 : (newData.val() === data.val() || (newData.val() === data.val() + 1 && newData.parent().parent().parent().child('likes').child($reviewId).child(auth.uid).exists() && !root.child('likes').child($reviewId).child(auth.uid).exists()) || (newData.val() === data.val() - 1 && !newData.parent().parent().parent().child('likes').child($reviewId).child(auth.uid).exists() && root.child('likes').child($reviewId).child(auth.uid).exists())))"
+        },
+        // Comentários: +1/-1 (a regra de comments/ exige o contador junto)
+        "commentCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && (!data.exists() ? newData.val() === 0 : (newData.val() === data.val() || newData.val() === data.val() + 1 || newData.val() === data.val() - 1))"
+        },
         "$outro": { ".validate": false }
       }
     },
@@ -141,6 +164,61 @@
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() === (data.exists() ? data.val() : 0) + (newData.parent().parent().parent().child('reviews').child(auth.uid + '_' + $mediaKey).exists() ? 1 : 0) - (root.child('reviews').child(auth.uid + '_' + $mediaKey).exists() ? 1 : 0)"
         },
         "$outro": { ".validate": false }
+      }
+    },
+
+    // ---------------------------------------------------------------
+    // Seguir: follows/{quem}/{alvo} e followers/{alvo}/{quem} andam
+    // juntos, com os dois contadores, numa única escrita
+    // ---------------------------------------------------------------
+    "follows": {
+      "$uid": {
+        ".read": true,
+        "$alvo": {
+          ".write": "auth != null && auth.uid === $uid && $alvo !== $uid && root.child('users').child($alvo).exists() && newData.exists() !== data.exists() && newData.parent().parent().parent().child('followers').child($alvo).child($uid).exists() === newData.exists() && newData.parent().parent().parent().child('users').child($uid).child('stats').child('following').val() === root.child('users').child($uid).child('stats').child('following').val() + (newData.exists() ? 1 : -1) && newData.parent().parent().parent().child('users').child($alvo).child('stats').child('followers').val() === root.child('users').child($alvo).child('stats').child('followers').val() + (newData.exists() ? 1 : -1)",
+          ".validate": "newData.val() === true"
+        }
+      }
+    },
+    "followers": {
+      "$alvo": {
+        ".read": true,
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && newData.parent().parent().parent().child('follows').child($uid).child($alvo).exists() === newData.exists()",
+          ".validate": "newData.val() === true"
+        }
+      }
+    },
+
+    // ---------------------------------------------------------------
+    // Curtidas: uma por pessoa por review, sempre com o likeCount junto
+    // ---------------------------------------------------------------
+    "likes": {
+      "$reviewId": {
+        ".read": true,
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && root.child('reviews').child($reviewId).exists() && newData.exists() !== data.exists() && newData.parent().parent().parent().child('reviews').child($reviewId).child('likeCount').val() === root.child('reviews').child($reviewId).child('likeCount').val() + (newData.exists() ? 1 : -1)",
+          ".validate": "newData.val() === true"
+        }
+      }
+    },
+
+    // ---------------------------------------------------------------
+    // Comentários: criar (sem editar); apagar só quem escreveu ou a dona
+    // da review. O commentCount vai sempre junto (+1 / -1).
+    // ---------------------------------------------------------------
+    "comments": {
+      "$reviewId": {
+        ".read": true,
+        ".indexOn": ["createdAt"],
+        "$commentId": {
+          ".write": "auth != null && root.child('reviews').child($reviewId).exists() && (data.exists() ? (!newData.exists() && (data.child('uid').val() === auth.uid || root.child('reviews').child($reviewId).child('uid').val() === auth.uid)) : newData.exists()) && newData.parent().parent().parent().child('reviews').child($reviewId).child('commentCount').val() === root.child('reviews').child($reviewId).child('commentCount').val() + (newData.exists() ? 1 : -1)",
+          ".validate": "newData.hasChildren(['uid', 'text', 'createdAt'])",
+          "uid": { ".validate": "newData.val() === auth.uid" },
+          "text": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500" },
+          "createdAt": { ".validate": "newData.val() === now" },
+          "$outro": { ".validate": false }
+        }
       }
     },
 

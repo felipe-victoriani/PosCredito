@@ -7,7 +7,7 @@
 // =====================================================================
 
 import { obterPerfil } from './auth.js';
-import { db, endAt, get, limitToLast, orderByValue, query, ref, serverTimestamp, update } from './firebase.js';
+import { db, endAt, get, limitToLast, orderByChild, orderByValue, query, ref, serverTimestamp, update } from './firebase.js';
 import { idReview, montarEscritaReview, montarExclusaoReview } from './reviews-regras.js';
 
 // Tentativas quando a escrita é recusada por concorrência na média
@@ -33,8 +33,11 @@ async function lerEstado(uid, mediaKey) {
   return { existente, statsTitulo, statsUsuario, jaVisto: visto !== null, naWatchlist: naWatchlist !== null };
 }
 
-/** Repete a operação se a recusa foi por dado desatualizado. */
-async function comTentativas(operacao) {
+/**
+ * Repete a operação se a recusa foi por dado desatualizado (outra pessoa
+ * mexeu no mesmo contador ao mesmo tempo). Usado também por social.js.
+ */
+export async function comTentativas(operacao) {
   let ultimoErro;
   for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa += 1) {
     try {
@@ -85,8 +88,8 @@ export function obterEstatisticaTitulo(mediaKey) {
   return ler(`titleStats/${mediaKey}`);
 }
 
-/** Perfil do autor, com cache. */
-async function obterAutor(uid) {
+/** Perfil do autor, com cache (também usado nos comentários). */
+export async function obterAutor(uid) {
   if (!cacheAutores.has(uid)) cacheAutores.set(uid, obterPerfil(uid).catch(() => null));
   return cacheAutores.get(uid);
 }
@@ -136,4 +139,30 @@ export function listarReviewsDoTitulo(mediaKey, limite = 10, cursor = null) {
 /** Reviews de uma pessoa. */
 export function listarReviewsDoUsuario(uid, limite = 10, cursor = null) {
   return listarPorIndice(`userReviews/${uid}`, limite, cursor);
+}
+
+// ---------- Feed ----------
+
+/** Junta cada review ao perfil do autor. */
+function comAutores(reviews) {
+  return Promise.all(reviews.map(async (review) => ({ review, autor: await obterAutor(review.uid) })));
+}
+
+/** As reviews mais recentes da comunidade (base do "Em alta"). */
+export async function listarReviewsRecentes(limite = 50) {
+  const instantaneo = await get(query(ref(db, 'reviews'), orderByChild('createdAt'), limitToLast(limite)));
+  const reviews = [];
+  instantaneo.forEach((filho) => {
+    reviews.push({ id: filho.key, ...filho.val() });
+  });
+  return comAutores(reviews.reverse());
+}
+
+/**
+ * Reviews recentes de quem a pessoa segue (base do "Seguindo").
+ * Lê as últimas de cada pessoa seguida e junta por data.
+ * @returns {Promise<{review: object, autor: object|null}[][]>} uma lista por pessoa
+ */
+export async function listarReviewsDeSeguidos(uidsSeguidos, porPessoa = 5) {
+  return Promise.all(uidsSeguidos.map(async (uid) => (await listarReviewsDoUsuario(uid, porPessoa)).itens));
 }

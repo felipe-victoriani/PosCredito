@@ -10,6 +10,12 @@ import {
   montarEscritaReview,
   montarExclusaoReview,
 } from '../../public/js/reviews-regras.js';
+import {
+  montarComentario,
+  montarCurtida,
+  montarExclusaoComentario,
+  montarSeguir,
+} from '../../public/js/social-regras.js';
 
 let ambiente;
 
@@ -337,5 +343,190 @@ describe('listas', () => {
 
   it('contador Vistos só anda de 1 em 1', async () => {
     await assertFails(set(ref(dbDe('alice'), 'users/alice/stats/watched'), 50));
+  });
+});
+
+// =====================================================================
+// Fase 4: seguir, curtir, comentar e feed
+// =====================================================================
+
+/** Valor de um caminho, lido com regras ligadas (tudo aqui é público). */
+const valor = async (caminho) => (await get(ref(dbDe('leitor'), caminho))).val();
+
+/** Seguir/deixar de seguir exatamente como o app. */
+async function seguir(uid, alvo, sim = true) {
+  const mapa = montarSeguir({
+    uid,
+    alvo,
+    seguir: sim,
+    seguindoAtual: await valor(`users/${uid}/stats/following`),
+    seguidoresAlvoAtual: await valor(`users/${alvo}/stats/followers`),
+  });
+  return update(ref(dbDe(uid)), mapa);
+}
+
+/** Curtir/descurtir como o app. */
+async function curtir(uid, reviewId, sim = true) {
+  const mapa = montarCurtida({ uid, reviewId, curtir: sim, likeCountAtual: await valor(`reviews/${reviewId}/likeCount`) });
+  return update(ref(dbDe(uid)), mapa);
+}
+
+/** Comentar como o app. */
+async function comentar(uid, reviewId, commentId, texto = 'Concordo!') {
+  const mapa = montarComentario({ uid, reviewId, commentId, texto, commentCountAtual: await valor(`reviews/${reviewId}/commentCount`), carimbo: serverTimestamp() });
+  return update(ref(dbDe(uid)), mapa);
+}
+
+/** Excluir comentário como o app (por quem pedir). */
+async function excluirComentario(quem, reviewId, commentId) {
+  const mapa = montarExclusaoComentario({ reviewId, commentId, commentCountAtual: await valor(`reviews/${reviewId}/commentCount`) });
+  return update(ref(dbDe(quem)), mapa);
+}
+
+describe('seguir', () => {
+  beforeEach(async () => {
+    await criarPerfil(dbDe('alice'), 'alice', 'alice');
+    await criarPerfil(dbDe('bob'), 'bob', 'bob');
+  });
+
+  it('seguir e deixar de seguir mantêm os contadores certos', async () => {
+    await assertSucceeds(seguir('alice', 'bob'));
+    expect(await valor('users/alice/stats/following')).toBe(1);
+    expect(await valor('users/bob/stats/followers')).toBe(1);
+    await assertSucceeds(seguir('alice', 'bob', false));
+    expect(await valor('users/alice/stats/following')).toBe(0);
+    expect(await valor('users/bob/stats/followers')).toBe(0);
+  });
+
+  it('não segue a si mesmo nem perfil inexistente', async () => {
+    await assertFails(seguir('alice', 'alice'));
+    await assertFails(seguir('alice', 'fantasma'));
+  });
+
+  it('não segue duas vezes (contador não dobra)', async () => {
+    await seguir('alice', 'bob');
+    await assertFails(seguir('alice', 'bob'));
+  });
+
+  it('não infla seguidores de outra pessoa sem seguir de verdade', async () => {
+    await assertFails(set(ref(dbDe('alice'), 'users/bob/stats/followers'), 1));
+    await assertFails(set(ref(dbDe('alice'), 'users/bob/stats/followers'), 1000));
+  });
+
+  it('não grava follow sem o espelho em followers/', async () => {
+    const mapa = montarSeguir({ uid: 'alice', alvo: 'bob', seguir: true });
+    delete mapa['followers/bob/alice'];
+    await assertFails(update(ref(dbDe('alice')), mapa));
+  });
+
+  it('não faz alguém seguir outra pessoa no lugar dela', async () => {
+    const mapa = montarSeguir({ uid: 'bob', alvo: 'alice', seguir: true });
+    await assertFails(update(ref(dbDe('alice')), mapa));
+  });
+
+  it('quem segue quem é público', async () => {
+    await seguir('alice', 'bob');
+    await assertSucceeds(get(ref(dbDe(null), 'follows/alice')));
+    await assertSucceeds(get(ref(dbDe(null), 'followers/bob')));
+  });
+});
+
+describe('curtidas', () => {
+  const RID = idReview('alice', 'tv_209867');
+
+  beforeEach(async () => {
+    await criarPerfil(dbDe('alice'), 'alice', 'alice');
+    await criarPerfil(dbDe('bob'), 'bob', 'bob');
+    await publicar('alice');
+  });
+
+  it('curtir e descurtir mexem no likeCount', async () => {
+    await assertSucceeds(curtir('bob', RID));
+    expect(await valor(`reviews/${RID}/likeCount`)).toBe(1);
+    await assertSucceeds(curtir('bob', RID, false));
+    expect(await valor(`reviews/${RID}/likeCount`)).toBe(0);
+  });
+
+  it('a dona também pode curtir a própria review', async () => {
+    await assertSucceeds(curtir('alice', RID));
+  });
+
+  it('não curte duas vezes', async () => {
+    await curtir('bob', RID);
+    await assertFails(curtir('bob', RID));
+  });
+
+  it('não infla likeCount sem curtir', async () => {
+    await assertFails(set(ref(dbDe('bob'), `reviews/${RID}/likeCount`), 1));
+  });
+
+  it('não curte no lugar de outra pessoa', async () => {
+    const mapa = montarCurtida({ uid: 'alice', reviewId: RID, curtir: true, likeCountAtual: 0 });
+    await assertFails(update(ref(dbDe('bob')), mapa));
+  });
+
+  it('não curte review inexistente', async () => {
+    await assertFails(update(ref(dbDe('bob')), { 'likes/nada_movie_1/bob': true }));
+  });
+
+  it('curtir não deixa mexer no texto da review', async () => {
+    await assertFails(update(ref(dbDe('bob')), { ...montarCurtida({ uid: 'bob', reviewId: RID, curtir: true }), [`reviews/${RID}/text`]: 'Hackeado' }));
+  });
+
+  it('a dona ainda edita a review depois de receber curtidas', async () => {
+    await curtir('bob', RID);
+    await assertSucceeds(publicar('alice', { ...REVIEW, rating: 3 }));
+    expect(await valor(`reviews/${RID}/likeCount`)).toBe(1);
+  });
+});
+
+describe('comentários', () => {
+  const RID = idReview('alice', 'tv_209867');
+
+  beforeEach(async () => {
+    await criarPerfil(dbDe('alice'), 'alice', 'alice');
+    await criarPerfil(dbDe('bob'), 'bob', 'bob');
+    await criarPerfil(dbDe('carol'), 'carol', 'carol');
+    await publicar('alice');
+  });
+
+  it('comenta e soma no commentCount', async () => {
+    await assertSucceeds(comentar('bob', RID, 'c1'));
+    expect(await valor(`reviews/${RID}/commentCount`)).toBe(1);
+    await assertSucceeds(get(ref(dbDe(null), `comments/${RID}`)));
+  });
+
+  it('não comenta sem somar o contador', async () => {
+    await assertFails(set(ref(dbDe('bob'), `comments/${RID}/c1`), { uid: 'bob', text: 'Oi', createdAt: serverTimestamp() }));
+  });
+
+  it('recusa comentário vazio, longo demais ou em nome de outra pessoa', async () => {
+    await assertFails(comentar('bob', RID, 'c1', ''));
+    await assertFails(comentar('bob', RID, 'c2', 'x'.repeat(501)));
+    const falso = montarComentario({ uid: 'carol', reviewId: RID, commentId: 'c3', texto: 'Oi', carimbo: serverTimestamp() });
+    await assertFails(update(ref(dbDe('bob')), falso));
+  });
+
+  it('quem escreveu e a dona da review podem apagar; terceiros não', async () => {
+    await comentar('bob', RID, 'c1');
+    await comentar('bob', RID, 'c2');
+    await assertFails(excluirComentario('carol', RID, 'c1'));
+    await assertSucceeds(excluirComentario('bob', RID, 'c1'));
+    await assertSucceeds(excluirComentario('alice', RID, 'c2'));
+    expect(await valor(`reviews/${RID}/commentCount`)).toBe(0);
+  });
+
+  it('comentário não pode ser editado', async () => {
+    await comentar('bob', RID, 'c1');
+    await assertFails(set(ref(dbDe('bob'), `comments/${RID}/c1/text`), 'Editado'));
+  });
+});
+
+describe('feed', () => {
+  it('lista pública das reviews mais recentes', async () => {
+    await criarPerfil(dbDe('alice'), 'alice', 'alice');
+    await publicar('alice');
+    const { query, orderByChild, limitToLast } = await import('firebase/database');
+    await assertSucceeds(get(query(ref(dbDe(null), 'reviews'), orderByChild('createdAt'), limitToLast(20))));
   });
 });

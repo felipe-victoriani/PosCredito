@@ -553,7 +553,8 @@
     align-items: center;
     text-decoration: none;
     & .poster { border-radius: var(--raio-sm); }
-    & .poster__placeholder { font-size: var(--texto-xs); }
+    /* Miniatura sem capa: o nome já aparece ao lado, não repete */
+    & .poster__placeholder { display: none; }
   }
   .review__titulo-nome { font-size: var(--texto-lg); font-weight: var(--peso-extra); line-height: 1.2; }
   .review__ano { color: var(--cor-texto-2); font-weight: var(--peso-normal); }
@@ -582,6 +583,56 @@
   }
 
   .esqueleto--review { height: 9rem; border-radius: var(--raio-lg); }
+
+  /* ---------- Ações da review (curtir / comentar) ---------- */
+  .acoes-review { display: flex; gap: var(--esp-5); margin-top: var(--esp-1); }
+  .acao {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-2);
+    min-height: var(--alvo-toque);
+    min-width: var(--alvo-toque);
+    color: var(--cor-texto-2);
+    font-weight: var(--peso-forte);
+    &:hover { color: var(--cor-texto); }
+    &[aria-expanded="true"] { color: var(--cor-texto); }
+  }
+  /* Curtido: coração amarelo preenchido */
+  .acao--ativa { color: var(--cor-destaque); & svg { fill: currentColor; } }
+  .acao--ativa:hover { color: var(--cor-destaque); }
+
+  /* ---------- Comentários ---------- */
+  .comentarios {
+    display: flex;
+    flex-direction: column;
+    gap: var(--esp-3);
+    margin-top: var(--esp-2);
+    padding-top: var(--esp-4);
+    border-top: 1px solid var(--cor-borda);
+  }
+  .comentarios__lista { display: flex; flex-direction: column; gap: var(--esp-4); }
+  .comentarios__carregando, .comentarios__vazio { color: var(--cor-texto-2); font-size: var(--texto-sm); }
+  .comentario { display: grid; grid-template-columns: auto 1fr auto; gap: var(--esp-3); align-items: start; }
+  .comentario__corpo { min-width: 0; }
+  .comentario__nome { font-weight: var(--peso-forte); text-decoration: none; &:is(a):hover { text-decoration: underline; } }
+  .comentario__tempo { font-family: var(--fonte-mono); font-size: var(--texto-sm); color: var(--cor-texto-2); }
+  .comentario__texto { white-space: pre-line; overflow-wrap: anywhere; }
+  .comentario__apagar {
+    display: grid;
+    place-items: center;
+    width: var(--alvo-toque);
+    height: var(--alvo-toque);
+    margin: calc(var(--esp-3) * -1) calc(var(--esp-2) * -1) 0 0;
+    color: var(--cor-texto-2);
+    border-radius: var(--raio-sm);
+    &:hover { color: var(--cor-perigo); }
+  }
+  .comentarios__form { display: grid; grid-template-columns: 1fr auto; gap: var(--esp-2); align-items: end; }
+  .comentarios__campo { background: var(--cor-fundo); min-height: 3rem; }
+  .comentarios__enviar { min-height: 3rem; }
+
+  /* Feed: abas logo abaixo do topo */
+  .abas--feed { margin-top: 0; }
 
   /* ---------- Abas ---------- */
   .abas {
@@ -1062,6 +1113,8 @@
   }
 
   .acoes-perfil { margin-top: var(--esp-4); & .botao { width: 100%; } }
+  /* "Seguindo" com contorno amarelo para diferenciar de "Seguir" */
+  .botao-seguir[aria-pressed="true"] { border-color: var(--cor-destaque); color: var(--cor-destaque); }
   .vazio-secao { color: var(--cor-texto-2); }
 
   /* ---------- Convite para entrar ---------- */

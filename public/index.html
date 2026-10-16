@@ -63,13 +63,17 @@
   </header>
 
   <main id="conteudo" class="container">
-    <h1 class="visualmente-oculto">PósCréditos: o que está em alta</h1>
+    <h1 class="visualmente-oculto">PósCréditos: feed de reviews</h1>
 
-    <section class="secao" aria-labelledby="titulo-em-alta">
-      <h2 id="titulo-em-alta" class="secao__titulo">Em alta na semana</h2>
+    <!-- Abas do feed (setas do teclado trocam de aba) -->
+    <div id="abas-feed" class="abas abas--feed" role="tablist" aria-label="Feed">
+      <button id="aba-seguindo" class="abas__aba" type="button" role="tab" aria-selected="false" aria-controls="painel-feed" data-aba="seguindo" tabindex="-1">Seguindo</button>
+      <button id="aba-em-alta" class="abas__aba" type="button" role="tab" aria-selected="true" aria-controls="painel-feed" data-aba="em-alta">Em alta</button>
+    </div>
 
-      <!-- Filtros de tipo (aria-pressed indica o ativo) -->
-      <div id="filtros-em-alta" class="chips" role="group" aria-label="Filtrar por tipo">
+    <div id="painel-feed" class="painel" role="tabpanel" aria-labelledby="aba-em-alta">
+      <!-- Filtros de tipo: valem para o feed e para a vitrine abaixo -->
+      <div id="filtros-feed" class="chips" role="group" aria-label="Filtrar por tipo">
         <button type="button" class="chip" data-filtro="tudo" aria-pressed="true">Tudo</button>
         <button type="button" class="chip" data-filtro="filme" aria-pressed="false">Filmes</button>
         <button type="button" class="chip" data-filtro="serie" aria-pressed="false">Séries</button>
@@ -77,6 +81,13 @@
         <button type="button" class="chip" data-filtro="dorama" aria-pressed="false">Doramas</button>
       </div>
 
+      <ul id="lista-feed" class="lista-reviews" aria-label="Reviews"></ul>
+      <button id="mais-feed" class="botao botao--secundario botao--bloco" type="button" hidden>Ver mais</button>
+    </div>
+
+    <!-- Vitrine do catálogo (TMDB): descoberta mesmo sem reviews -->
+    <section class="secao" aria-labelledby="titulo-vitrine">
+      <h2 id="titulo-vitrine" class="secao__titulo">Em alta no catálogo</h2>
       <ul id="grade-em-alta" class="grade-posters" aria-label="Títulos em alta"></ul>
       <button id="carregar-mais" class="botao botao--secundario botao--bloco" type="button" hidden>Carregar mais</button>
     </section>

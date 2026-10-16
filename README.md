@@ -12,7 +12,7 @@ Stack: HTML/CSS/JS puros (ES modules) + Firebase (Auth + Realtime Database) + Ve
 | 1 | Estrutura, tokens, logo, proxy `/api/tmdb`, busca, página do título com "onde assistir" | Pronta |
 | 2 | Login com Google, perfil, @username único, onboarding, busca de pessoas | Pronta |
 | 3 | Reviews, notas, spoiler, edição/exclusão, listas pessoais | Pronta |
-| 4 | Seguir, curtir, comentar, feed | Pendente |
+| 4 | Seguir, curtir, comentar, feed | Pronta |
 | 5 | Card de Stories, denúncia/bloqueio, Security Rules finais, PWA | Pendente |
 
 ## Estrutura
@@ -108,6 +108,15 @@ Na primeira execução o `vercel dev` pergunta as configurações do projeto: ac
 8. Deslogado, toque em **Avaliar** → vai para o login e, depois de entrar, volta ao título com o editor aberto.
 9. Botão **+** da barra → busca → escolher título → abre o editor direto.
 
+### Testar a Fase 4 manualmente (use duas contas Google)
+
+1. Conta A: abra o perfil da conta B (`perfil.html?u=@dela` ou pela busca) → **Seguir** → contador de seguidores sobe; o botão vira "Seguindo".
+2. Início → aba **Seguindo** mostra as reviews de B; **Em alta** mostra as recentes da comunidade, mais curtidas primeiro. Os chips filtram por tipo.
+3. Curta uma review (coração fica amarelo, número sobe). Toque de novo para descurtir.
+4. Toque no balão → escreva um comentário → **Enviar**. O contador sobe.
+5. Apague: o autor apaga o próprio comentário; a dona da review apaga qualquer comentário dela. Terceiros não veem a lixeira.
+6. Deslogado: curtir/comentar/seguir levam ao login e voltam para a mesma página.
+
 ## Testes automatizados
 
 ```bash
@@ -145,5 +154,10 @@ Depois do primeiro deploy de produção, troque `https://poscredito.vercel.app` 
 - **Índices** `titleReviews`/`userReviews` guardam o `createdAt` como valor (paginação com `orderByValue` + `limitToLast`).
 - **Dados do título copiados** (nome, pôster, tipo, ano) na review e nos itens de lista, para o perfil e o feed não chamarem o TMDB a cada item.
 - **"Já vi" automático:** publicar review com "Assisti"/"Reassisti" coloca o título em "Já vi" (e tira de "Quero ver"). Contador "Vistos" = `stats.watched`.
+- **Seguir:** `follows/{uid}/{alvo}`, `followers/{alvo}/{uid}` e os dois contadores no mesmo update; as regras exigem os quatro juntos e consistentes.
+- **Curtidas:** `likes/{reviewId}/{uid}` + `likeCount ±1`. Como a chave é o uid de quem curte, cada +1 é amarrado a uma curtida real.
+- **Comentários:** `comments/{reviewId}/{id}` (sem edição) + `commentCount ±1`. Apagam: quem escreveu ou a dona da review.
+- **Feed "Em alta":** as 50 reviews mais recentes, ordenadas por curtidas. **"Seguindo":** as 5 últimas de cada pessoa seguida (até 50 pessoas), por data. Simples para o tamanho do MVP; com muita gente, vale um feed pré-montado por Cloud Function.
+- **Limitação conhecida:** `commentCount` só anda de 1 em 1, mas (como os contadores próprios abaixo) não é amarrado a um comentário específico — dá para inflar de 1 em 1 sem comentar. Reviews excluídas deixam curtidas/comentários órfãos no banco (não aparecem em lugar nenhum).
 - **Limitação conhecida:** os contadores próprios (`stats.reviews`/`stats.watched`) só andam de 1 em 1, mas as regras não conseguem ligar cada +1 a uma review/lista específica. Para recontar com 100% de garantia seria preciso uma Cloud Function (fora do escopo do MVP).
 # PosCredito
