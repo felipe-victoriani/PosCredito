@@ -105,6 +105,37 @@ describe('consolidarProvedores', () => {
     ]);
   });
 
+  it('esconde variações de um serviço que já aparece (canais e planos com anúncio)', () => {
+    const br = {
+      flatrate: [
+        { provider_id: 8, provider_name: 'Netflix', display_priority: 1 },
+        { provider_id: 1796, provider_name: 'Netflix Standard with Ads', display_priority: 2 },
+        { provider_id: 283, provider_name: 'Crunchyroll', display_priority: 3 },
+        { provider_id: 1968, provider_name: 'Crunchyroll Amazon Channel', display_priority: 4 },
+        // Só a variação existe: precisa continuar na lista
+        { provider_id: 582, provider_name: 'Paramount+ Amazon Channel', display_priority: 5 },
+      ],
+      // "Apple TV+" não é variação de "Apple TV" (não tem espaço depois do nome)
+      rent: [{ provider_id: 2, provider_name: 'Apple TV', display_priority: 6 }],
+      buy: [{ provider_id: 350, provider_name: 'Apple TV+', display_priority: 7 }],
+    };
+    expect(consolidarProvedores(br).map((p) => p.nome)).toEqual([
+      'Netflix',
+      'Crunchyroll',
+      'Paramount+ Amazon Channel',
+      'Apple TV',
+      'Apple TV+',
+    ]);
+  });
+
+  it('variação só em outra categoria passa a categoria para o serviço principal', () => {
+    const br = {
+      flatrate: [{ provider_id: 384, provider_name: 'HBO Max', display_priority: 1 }],
+      rent: [{ provider_id: 9, provider_name: 'HBO Max Amazon Channel', display_priority: 2 }],
+    };
+    expect(consolidarProvedores(br)).toEqual([{ id: 384, nome: 'HBO Max', logo: null, categorias: ['Assinatura', 'Aluguel'] }]);
+  });
+
   it('sem dados do Brasil devolve lista vazia', () => {
     expect(consolidarProvedores(undefined)).toEqual([]);
     expect(consolidarProvedores({ link: 'x' })).toEqual([]);

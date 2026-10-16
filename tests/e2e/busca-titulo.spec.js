@@ -9,7 +9,7 @@ test.describe('Busca → página do título', () => {
     await page.goto('/busca.html');
 
     // Digita e espera os resultados (pessoas não aparecem)
-    await page.getByLabel('Buscar filmes, séries, animes e doramas').fill('frieren');
+    await page.getByLabel('Buscar títulos e pessoas').fill('frieren');
     const resultados = page.getByRole('list', { name: 'Resultados da busca' });
     await expect(resultados.getByRole('link')).toHaveCount(2);
     await expect(resultados).not.toContainText('Pessoa que deve sumir');

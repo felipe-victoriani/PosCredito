@@ -88,7 +88,7 @@ vercel          # deploy de preview
 vercel --prod   # produção
 ```
 
-Depois do primeiro deploy de produção, troque `https://poscreditos.vercel.app` pelo domínio real em: tags Open Graph dos HTML, `public/robots.txt` e `public/sitemap.xml`.
+Depois do primeiro deploy de produção, troque `https://poscredito.vercel.app` pelo domínio real em: tags Open Graph dos HTML, `public/robots.txt` e `public/sitemap.xml`.
 
 ## Decisões da Fase 1
 

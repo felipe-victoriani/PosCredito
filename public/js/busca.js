@@ -16,6 +16,7 @@ import {
   tmdbGet,
 } from './tmdb.js';
 import {
+  criarAvatar,
   criarCartaoPoster,
   criarEsqueletos,
   criarEstado,
@@ -27,10 +28,15 @@ import {
   mensagemErro,
 } from './ui.js';
 
+import { formatarContador } from './perfil-regras.js';
+
 // Espera após a última tecla antes de buscar (ms)
 const DEBOUNCE_MS = 350;
-// Ordem fixa dos chips de tipo
-const ORDEM_TIPOS = ['filme', 'serie', 'anime', 'dorama'];
+// Tempo máximo esperando a busca de pessoas (ms)
+const TEMPO_MAX_PESSOAS_MS = 4000;
+// Ordem fixa dos chips de tipo (pessoas por último, como nas referências)
+const ORDEM_TIPOS = ['filme', 'serie', 'anime', 'dorama', 'pessoa'];
+const ROTULOS_FILTRO = { ...ROTULO_TIPO_PLURAL, pessoa: 'Pessoas' };
 
 // Elementos da página
 const form = document.getElementById('form-busca');
@@ -47,7 +53,8 @@ const dicaAvaliar = document.getElementById('dica-avaliar');
 let termoAtual = '';
 let paginaAtual = 0;
 let totalPaginas = 0;
-let resultados = []; // [{ item, tipo }]
+// Títulos: { chave, tipo, item }  ·  Pessoas: { chave, tipo: 'pessoa', perfil }
+let resultados = [];
 let filtroAtual = 'tudo';
 let temporizador;
 // Descarta respostas que chegam fora de ordem
@@ -55,8 +62,26 @@ let geracao = 0;
 
 // ---------- Renderização ----------
 
+/** Linha de pessoa: avatar + nome + @ + seguidores. */
+function criarLinhaPessoa(perfil) {
+  const seguidores = perfil.stats?.followers ?? 0;
+  return el('li', {}, [
+    el('a', { classe: 'resultado resultado--pessoa', atributos: { href: `perfil.html?u=${encodeURIComponent(perfil.username)}` } }, [
+      criarAvatar(perfil, 'm'),
+      el('div', { classe: 'resultado__info' }, [
+        el('span', { classe: 'resultado__nome', texto: perfil.displayName }),
+        el('span', {
+          classe: 'resultado__mono',
+          texto: `@${perfil.username} · ${formatarContador(seguidores)} ${seguidores === 1 ? 'seguidor' : 'seguidores'}`,
+        }),
+      ]),
+    ]),
+  ]);
+}
+
 /** Linha de resultado: pôster + nome + selo + ano (+ título original). */
-function criarLinhaResultado({ item, tipo }) {
+function criarLinhaResultado({ item, tipo, perfil }) {
+  if (tipo === 'pessoa') return criarLinhaPessoa(perfil);
   const original = tituloOriginalDe(item);
   return el('li', {}, [
     el('a', { classe: 'resultado', atributos: { href: linkTitulo(item) } }, [
@@ -87,7 +112,7 @@ function renderizarFiltros() {
 
   filtros.replaceChildren(
     criarChip('tudo', 'Tudo', resultados.length),
-    ...tipos.map((t) => criarChip(t, ROTULO_TIPO_PLURAL[t], porTipo[t].length)),
+    ...tipos.map((t) => criarChip(t, ROTULOS_FILTRO[t], porTipo[t].length)),
   );
   // Só faz sentido filtrar se houver mais de um tipo
   filtros.hidden = tipos.length < 2;
@@ -126,15 +151,23 @@ async function buscar(termo, pagina = 1) {
   }
   lista.setAttribute('aria-busy', 'true');
 
+  // Pessoas só na primeira página, em paralelo com os títulos
+  const promessaPessoas = pagina === 1 ? buscarPessoasSemFalhar(termo) : Promise.resolve([]);
+
   try {
-    const dados = await buscarTitulos(termo, pagina);
+    const [dados, pessoas] = await Promise.all([buscarTitulos(termo, pagina), promessaPessoas]);
     if (minhaGeracao !== geracao) return;
 
     // Classifica cada item uma vez só (anime/dorama dependem de gênero e idioma)
-    const novos = dados.results.map((item) => ({ item, tipo: classificarTipo(item) }));
+    const novos = [
+      ...dados.results.map((item) => ({ chave: `${item.media_type}_${item.id}`, item, tipo: classificarTipo(item) })),
+      ...pessoas.map((perfil) => ({ chave: `pessoa_${perfil.uid}`, perfil, tipo: 'pessoa' })),
+    ];
     // Evita duplicados entre páginas (o TMDB às vezes repete)
-    const vistos = new Set(resultados.map((r) => `${r.item.media_type}_${r.item.id}`));
-    resultados = [...resultados, ...novos.filter((r) => !vistos.has(`${r.item.media_type}_${r.item.id}`))];
+    const vistos = new Set(resultados.map((r) => r.chave));
+    const semRepetidos = novos.filter((r) => !vistos.has(r.chave));
+    // Pessoas ficam sempre no fim da lista
+    resultados = [...resultados, ...semRepetidos].sort((a, b) => (a.tipo === 'pessoa') - (b.tipo === 'pessoa'));
 
     paginaAtual = dados.page;
     totalPaginas = Math.min(dados.total_pages, 10);
@@ -149,6 +182,30 @@ async function buscar(termo, pagina = 1) {
     );
   } finally {
     if (minhaGeracao === geracao) lista.removeAttribute('aria-busy');
+  }
+}
+
+/**
+ * Busca pessoas por @. O Firebase só é carregado aqui (import dinâmico),
+ * então quem só busca títulos não baixa o SDK. Falha vira lista vazia:
+ * a busca de títulos continua funcionando.
+ */
+async function buscarPessoasSemFalhar(termo) {
+  // Sem conexão com o banco o get() pode esperar indefinidamente:
+  // desiste depois de alguns segundos para não segurar os títulos
+  let temporizadorLimite;
+  const limite = new Promise((_, rejeitar) => {
+    temporizadorLimite = setTimeout(() => rejeitar(new Error('busca de pessoas: tempo esgotado')), TEMPO_MAX_PESSOAS_MS);
+  });
+  try {
+    // O limite cobre também o download do SDK (CDN lento)
+    const busca = import('./social.js').then(({ buscarPessoas }) => buscarPessoas(termo));
+    return await Promise.race([busca, limite]);
+  } catch (erro) {
+    console.error('[busca] pessoas', erro);
+    return [];
+  } finally {
+    clearTimeout(temporizadorLimite);
   }
 }
 

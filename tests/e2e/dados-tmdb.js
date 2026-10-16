@@ -68,9 +68,12 @@ export const EM_ALTA = {
 /**
  * Bloqueia imagens do TMDB e Google Fonts: deixa os testes offline e
  * evita que a navegação fique presa esperando rede externa lenta.
+ * Por padrão bloqueia também o SDK do Firebase (a busca de pessoas
+ * falha rápido e devolve lista vazia, como deve).
  */
-export async function bloquearRecursosExternos(page) {
+export async function bloquearRecursosExternos(page, { permitirFirebase = false } = {}) {
   await page.route(/^https:\/\/(image\.tmdb\.org|fonts\.googleapis\.com|fonts\.gstatic\.com)\//, (rota) => rota.abort());
+  if (!permitirFirebase) await page.route('https://www.gstatic.com/firebasejs/**', (rota) => rota.abort());
 }
 
 /**

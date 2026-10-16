@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Perfil · PósCréditos</title>
+  <meta name="description" content="Reviews, listas e gostos de quem faz parte do PósCréditos.">
+  <meta name="theme-color" content="#0E0E12">
+  <meta name="color-scheme" content="dark">
+
+  <!-- Ícones -->
+  <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- Open Graph genérico (perfil é montado no navegador) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PósCréditos">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="Perfil no PósCréditos">
+  <meta property="og:description" content="Veja as reviews e listas de quem faz parte do PósCréditos.">
+  <meta property="og:url" content="https://poscredito.vercel.app/perfil.html">
+  <meta property="og:image" content="https://poscredito.vercel.app/img/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Logo do PósCréditos com o slogan A conversa começa quando o filme acaba.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Perfil no PósCréditos">
+  <meta name="twitter:description" content="Veja as reviews e listas de quem faz parte do PósCréditos.">
+  <meta name="twitter:image" content="https://poscredito.vercel.app/img/og-image.png">
+
+  <!-- Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&display=swap">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/componentes.css">
+
+  <script type="module" src="js/perfil.js"></script>
+</head>
+<body>
+  <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
+  <!-- Engrenagem com menu da conta (só no próprio perfil) -->
+  <header class="topo-perfil">
+    <button id="botao-menu" class="botao-icone botao-icone--plano" type="button" popovertarget="menu-conta" aria-label="Opções da conta" hidden>
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+        <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+      </svg>
+    </button>
+    <!-- Popover nativo: abre/fecha sem JS, fecha com Esc ou clique fora -->
+    <div id="menu-conta" class="menu" popover>
+      <button id="menu-editar" class="menu__item" type="button">Editar perfil</button>
+      <button id="menu-sair" class="menu__item menu__item--perigo" type="button">Sair da conta</button>
+    </div>
+  </header>
+
+  <main id="conteudo" class="container" aria-busy="true">
+    <!-- Logado-fora: convite para entrar -->
+    <section id="area-login" class="cartao-login" aria-labelledby="titulo-login" hidden>
+      <svg class="cartao-login__logo" viewBox="0 0 96 96" width="72" height="72" aria-hidden="true" focusable="false">
+        <circle cx="48" cy="48" r="48" fill="#F5B700"/>
+        <g fill="#0E0E12">
+          <circle cx="28" cy="62" r="7.5"/>
+          <circle cx="48" cy="48" r="7.5"/>
+          <circle cx="68" cy="34" r="7.5"/>
+        </g>
+      </svg>
+      <h1 id="titulo-login" class="cartao-login__titulo">Entre no PósCréditos</h1>
+      <p class="cartao-login__texto">Avalie o que você assistiu, monte suas listas e siga quem tem gosto parecido com o seu.</p>
+      <button id="botao-google" class="botao botao--google" type="button">
+        <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true" focusable="false">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Entrar com Google
+      </button>
+      <p class="cartao-login__nota">Usamos só seu nome e foto do Google. Seu e-mail não aparece para ninguém.</p>
+    </section>
+
+    <!-- Perfil (próprio ou de outra pessoa) -->
+    <section id="area-perfil" aria-labelledby="perfil-nome" hidden>
+      <div class="perfil-cabecalho">
+        <div id="perfil-avatar" class="perfil-cabecalho__avatar"></div>
+        <div class="perfil-cabecalho__textos">
+          <h1 id="perfil-nome" class="perfil-cabecalho__nome"></h1>
+          <p id="perfil-username" class="perfil-cabecalho__username"></p>
+        </div>
+      </div>
+
+      <p id="perfil-bio" class="perfil-bio"></p>
+
+      <!-- Contadores: número em cima, rótulo embaixo -->
+      <dl class="contadores">
+        <div class="contadores__item"><dt>Vistos</dt><dd id="cont-vistos">0</dd></div>
+        <div class="contadores__item"><dt>Seguidores</dt><dd id="cont-seguidores">0</dd></div>
+        <div class="contadores__item"><dt>Seguindo</dt><dd id="cont-seguindo">0</dd></div>
+      </dl>
+
+      <div class="acoes-perfil">
+        <button id="botao-editar" class="botao botao--secundario" type="button" hidden>Editar perfil</button>
+      </div>
+
+      <section class="secao" aria-labelledby="h-reviews">
+        <h2 id="h-reviews" class="rotulo">Reviews</h2>
+        <p class="vazio-secao">Nenhuma review ainda.</p>
+      </section>
+
+      <section id="listas" class="secao" aria-labelledby="h-listas">
+        <h2 id="h-listas" class="rotulo">Listas</h2>
+        <p class="vazio-secao">As listas Quero ver, Já vi e Favoritos aparecem aqui em breve.</p>
+      </section>
+    </section>
+
+    <div id="area-erro" class="erro-titulo" hidden></div>
+  </main>
+
+  <!-- Edição de perfil (modal nativo) -->
+  <dialog id="dialogo-editar" class="dialogo" aria-labelledby="titulo-editar">
+    <form id="form-editar" class="dialogo__form" novalidate>
+      <div class="dialogo__topo">
+        <h2 id="titulo-editar" class="dialogo__titulo">Editar perfil</h2>
+        <button id="fechar-editar" class="botao-icone botao-icone--plano" type="button" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="campo">
+        <label class="campo__rotulo" for="editar-nome">Nome</label>
+        <div class="campo__caixa">
+          <input id="editar-nome" class="campo__input" type="text" autocomplete="name" maxlength="50" required>
+        </div>
+      </div>
+
+      <div class="campo">
+        <label class="campo__rotulo" for="editar-bio">Bio</label>
+        <textarea id="editar-bio" class="campo__texto" rows="3" maxlength="160" aria-describedby="contador-editar-bio"></textarea>
+        <p id="contador-editar-bio" class="campo__contador">0 / 160</p>
+      </div>
+
+      <h3 class="passo__subtitulo">O que você curte</h3>
+      <div id="editar-tipos"></div>
+      <h3 class="passo__subtitulo">Gêneros favoritos</h3>
+      <div id="editar-generos"></div>
+
+      <p id="erro-editar" class="erro-form" role="alert"></p>
+
+      <div class="dialogo__acoes">
+        <button id="cancelar-editar" class="botao botao--secundario" type="button">Cancelar</button>
+        <button id="salvar-editar" class="botao botao--primario" type="submit">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="rodape"></footer>
+  <nav class="nav-inferior" aria-label="Navegação principal" data-ativo="perfil"></nav>
+</body>
+</html>

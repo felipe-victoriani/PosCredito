@@ -5,6 +5,7 @@
 // nunca innerHTML. Ícones são SVG montados com createElementNS.
 // =====================================================================
 
+import { fotoSegura, iniciais, indiceCorAvatar } from './perfil-regras.js';
 import { anoDe, classificarTipo, criarMediaKey, ROTULO_TIPO, tituloDe, urlImagem } from './tmdb.js';
 
 // ---------- Criação de elementos ----------
@@ -44,6 +45,14 @@ const ICONES = {
   check: ['M20 6 9 17l-5-5'],
   play: ['M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z'],
   alerta: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'M12 8v4', 'M12 16h.01'],
+  filme: ['M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z', 'm6.2 5.3 3.1 3.9', 'm12.4 3.4 3.1 4', 'M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z'],
+  tv: ['M4 7h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z', 'm17 2-5 5-5-5'],
+  coracao: ['M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'],
+  globo: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20', 'M2 12h20'],
+  pessoas: ['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0', 'M22 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75'],
+  sair: ['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'm16 17 5-5-5-5', 'M21 12H9'],
+  fechar: ['M18 6 6 18', 'm6 6 12 12'],
+  editar: ['M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'],
 };
 
 /**
@@ -139,6 +148,36 @@ export function criarCartaoPoster(item, mediaType = item.media_type) {
   ]);
 }
 
+// ---------- Pessoas ----------
+
+/**
+ * Avatar redondo: foto do Google ou iniciais sobre uma cor fixa da pessoa.
+ * Decorativo (alt vazio): o nome sempre aparece em texto ao lado.
+ * @param {{uid?: string, displayName?: string, photoURL?: string}} perfil
+ * @param {'p'|'m'|'g'} [tamanho] - 40px, 56px ou 96px
+ */
+export function criarAvatar(perfil, tamanho = 'm') {
+  const classe = `avatar avatar--${tamanho}`;
+  const foto = fotoSegura(perfil?.photoURL);
+
+  // Sem foto (ou se ela falhar): iniciais coloridas
+  const criarIniciais = () =>
+    el('span', {
+      classe: `${classe} avatar--cor-${indiceCorAvatar(perfil?.uid)}`,
+      texto: iniciais(perfil?.displayName),
+      atributos: { 'aria-hidden': 'true' },
+    });
+
+  if (!foto) return criarIniciais();
+
+  const img = el('img', {
+    classe,
+    atributos: { src: foto, alt: '', width: 96, height: 96, loading: 'lazy', referrerpolicy: 'no-referrer' },
+  });
+  img.addEventListener('error', () => img.replaceWith(criarIniciais()), { once: true });
+  return img;
+}
+
 // ---------- Estados (carregando, vazio, erro) ----------
 
 /** Mensagem amigável a partir de um erro do catálogo (sem detalhes técnicos). */
@@ -186,11 +225,13 @@ export function mostrarToast(mensagem) {
 
 // ---------- Navegação inferior e rodapé ----------
 
-// Itens da barra inferior. "Listas" e "Perfil" entram nas fases 2 e 3.
+// Itens da barra inferior (o "+" fica no meio, como nas referências)
 const ITENS_NAV = [
   { id: 'inicio', texto: 'Início', href: 'index.html', icone: 'inicio' },
-  { id: 'nova', texto: 'Nova review', href: 'busca.html?avaliar=1', icone: 'mais', destaque: true },
   { id: 'busca', texto: 'Buscar', href: 'busca.html', icone: 'busca' },
+  { id: 'nova', texto: 'Nova review', href: 'busca.html?avaliar=1', icone: 'mais', destaque: true },
+  { id: 'listas', texto: 'Listas', href: 'perfil.html#listas', icone: 'salvar' },
+  { id: 'perfil', texto: 'Perfil', href: 'perfil.html', icone: 'perfil' },
 ];
 
 /** Preenche <nav class="nav-inferior" data-ativo="..."> com os itens. */

@@ -21,6 +21,19 @@
   --cor-destaque: #F5B700;       /* amarelo-pipoca: CTA e estado ativo (10%) */
   --cor-destaque-texto: #0E0E12; /* texto sobre o amarelo (contraste ~10:1) */
   --cor-perigo: #FF7A6B;         /* erros (sempre com ícone/texto junto) */
+  --cor-sucesso: #7BD389;        /* confirmações (ex.: @ disponível) */
+
+  /* Botão "Entrar com Google" (cores exigidas pela marca do Google) */
+  --cor-google-fundo: #FFFFFF;
+  --cor-google-texto: #1F1F1F;
+
+  /* Avatares sem foto: fundos claros com texto escuro (contraste AA) */
+  --avatar-0: #F28B66;
+  --avatar-1: #6FC2B0;
+  --avatar-2: #8FB3F0;
+  --avatar-3: #C9A0F0;
+  --avatar-4: #E8C468;
+  --avatar-5: #9CCB7A;
 
   /* Fundo translúcido dos botões sobre imagem */
   --cor-vidro: color-mix(in oklch, var(--cor-fundo) 72%, transparent);

@@ -185,9 +185,13 @@ function renderizarElenco(detalhes) {
 // ---------- Semelhantes ----------
 
 function renderizarSemelhantes(detalhes, mediaType) {
-  const itens = (detalhes.similar?.results ?? []).slice(0, MAX_SEMELHANTES);
+  // Recomendações primeiro; se o TMDB não tiver nenhuma, usa os "similares"
+  const recomendados = detalhes.recommendations?.results ?? [];
+  const fonte = recomendados.length ? recomendados : (detalhes.similar?.results ?? []);
+  const itens = fonte.slice(0, MAX_SEMELHANTES);
   if (!itens.length) return;
-  $('lista-semelhantes').replaceChildren(...itens.map((item) => criarCartaoPoster(item, mediaType)));
+  // Recomendações podem misturar filme e série: respeita o media_type de cada item
+  $('lista-semelhantes').replaceChildren(...itens.map((item) => criarCartaoPoster(item, item.media_type ?? mediaType)));
   $('secao-semelhantes').hidden = false;
 }
 

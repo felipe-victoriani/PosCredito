@@ -144,8 +144,19 @@ export function consolidarProvedores(dadosBR) {
     }
   });
 
+  // Variações de um serviço que já está na lista ("Netflix Standard with Ads",
+  // "HBO Max Amazon Channel") somem: as categorias vão para o serviço principal.
+  // Se só a variação existir (ex.: "Paramount+ Amazon Channel"), ela fica.
+  const todos = [...porId.values()];
+  const principais = todos.filter((p) => {
+    const base = todos.find((outro) => outro !== p && p.nome.startsWith(`${outro.nome} `));
+    if (!base) return true;
+    for (const c of p.categorias) if (!base.categorias.includes(c)) base.categorias.push(c);
+    return false;
+  });
+
   // Ordena e remove o campo auxiliar de ordenação
-  return [...porId.values()].sort((a, b) => a.ordem - b.ordem).map(({ ordem, ...resto }) => resto);
+  return principais.sort((a, b) => a.ordem - b.ordem).map(({ ordem, ...resto }) => resto);
 }
 
 /**
@@ -209,10 +220,14 @@ export async function buscarTitulos(texto, pagina = 1) {
   return { ...dados, results: filtrarFilmesESeries(dados.results) };
 }
 
-/** Detalhes completos com elenco, vídeos e semelhantes. */
+/**
+ * Detalhes completos com elenco, vídeos e títulos relacionados.
+ * "recommendations" (baseado em quem assistiu) é bem melhor que "similar"
+ * (baseado só em gênero/palavra-chave); "similar" fica como reserva.
+ */
 export function buscarDetalhes(mediaType, id) {
   return tmdbGet(`/${mediaType}/${id}`, {
-    append_to_response: 'credits,videos,similar',
+    append_to_response: 'credits,videos,recommendations,similar',
     include_video_language: 'pt,en,null',
   });
 }

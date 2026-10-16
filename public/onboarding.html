@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Criar perfil · PósCréditos</title>
+  <meta name="description" content="Crie seu perfil no PósCréditos e conte o que você curte assistir.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0E0E12">
+  <meta name="color-scheme" content="dark">
+
+  <!-- Ícones -->
+  <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&display=swap">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/componentes.css">
+
+  <script type="module" src="js/onboarding.js"></script>
+</head>
+<body>
+  <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
+  <main id="conteudo" class="container onboarding" aria-busy="true">
+    <!-- Barra de progresso + "Pular" -->
+    <div class="onboarding__topo">
+      <ol class="progresso" aria-label="Progresso do cadastro">
+        <li class="progresso__passo"><span class="visualmente-oculto">Passo 1: seu @</span></li>
+        <li class="progresso__passo"><span class="visualmente-oculto">Passo 2: interesses</span></li>
+        <li class="progresso__passo"><span class="visualmente-oculto">Passo 3: bio</span></li>
+      </ol>
+      <button id="pular" class="botao-texto botao-texto--neutro" type="button" hidden>Pular</button>
+    </div>
+
+    <form id="form-onboarding" class="onboarding__form" novalidate>
+      <!-- Passo 1: @ e nome -->
+      <section class="passo" data-passo="1" aria-labelledby="titulo-passo-1">
+        <p class="rotulo">Passo 1 de 3</p>
+        <h1 id="titulo-passo-1" class="passo__titulo" tabindex="-1">Como vão te chamar por aqui?</h1>
+        <p class="passo__sub">Seu @ é único e não pode ser trocado depois.</p>
+
+        <div class="campo">
+          <label class="campo__rotulo" for="campo-username">Seu @</label>
+          <div class="campo__caixa campo__caixa--arroba">
+            <span class="campo__prefixo" aria-hidden="true">@</span>
+            <input id="campo-username" class="campo__input" name="username" type="text" inputmode="text"
+                   autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" required
+                   aria-describedby="status-username dica-username">
+          </div>
+          <p id="dica-username" class="campo__dica">De 3 a 20 caracteres: letras, números, ponto e sublinhado.</p>
+          <p id="status-username" class="campo__status" aria-live="polite"></p>
+        </div>
+
+        <div class="campo">
+          <label class="campo__rotulo" for="campo-nome">Nome</label>
+          <div class="campo__caixa">
+            <input id="campo-nome" class="campo__input" name="nome" type="text" autocomplete="name" maxlength="50" required>
+          </div>
+        </div>
+      </section>
+
+      <!-- Passo 2: o que curte assistir -->
+      <section class="passo" data-passo="2" aria-labelledby="titulo-passo-2" hidden>
+        <p class="rotulo">Passo 2 de 3</p>
+        <h1 id="titulo-passo-2" class="passo__titulo" tabindex="-1">O que você curte assistir?</h1>
+        <p class="passo__sub">Escolha quantos quiser. Seu feed vai começar por aqui.</p>
+        <div id="seletor-tipos"></div>
+        <h2 class="passo__subtitulo">Gêneros favoritos</h2>
+        <div id="seletor-generos"></div>
+      </section>
+
+      <!-- Passo 3: bio + prévia do perfil -->
+      <section class="passo" data-passo="3" aria-labelledby="titulo-passo-3" hidden>
+        <p class="rotulo">Passo 3 de 3</p>
+        <h1 id="titulo-passo-3" class="passo__titulo" tabindex="-1">Conta um pouco de você</h1>
+        <p class="passo__sub">A bio aparece no seu perfil. É opcional.</p>
+
+        <div class="previa-perfil" aria-hidden="true">
+          <div id="previa-avatar"></div>
+          <div>
+            <p id="previa-nome" class="previa-perfil__nome"></p>
+            <p id="previa-username" class="previa-perfil__username"></p>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label class="campo__rotulo" for="campo-bio">Bio</label>
+          <textarea id="campo-bio" class="campo__texto" name="bio" rows="4" maxlength="160"
+                    placeholder="Ex.: Ficção científica, terror e um dorama de vez em quando."
+                    aria-describedby="contador-bio"></textarea>
+          <p id="contador-bio" class="campo__contador">0 / 160</p>
+        </div>
+      </section>
+
+      <p id="erro-onboarding" class="erro-form" role="alert"></p>
+
+      <!-- Ações fixas no rodapé da tela -->
+      <div class="onboarding__acoes">
+        <button id="voltar-passo" class="botao botao--secundario" type="button" hidden>Voltar</button>
+        <button id="avancar" class="botao botao--primario" type="submit">Continuar</button>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

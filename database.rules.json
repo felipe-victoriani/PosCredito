@@ -1,6 +1,69 @@
 {
   "rules": {
+    // Tudo fechado por padrão: só o que estiver liberado abaixo funciona
     ".read": false,
-    ".write": false
+    ".write": false,
+
+    // ---------------------------------------------------------------
+    // Perfis públicos: qualquer pessoa lê um perfil; só o dono escreve
+    // ---------------------------------------------------------------
+    "users": {
+      "$uid": {
+        ".read": true,
+        // Só o dono, e o perfil não pode ser apagado
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.hasChildren(['username', 'displayName', 'createdAt', 'stats'])",
+
+        // @ imutável e obrigatoriamente reservado para este uid em usernames/
+        // (o "." do @ vira "," na chave, porque chaves não aceitam ponto)
+        "username": {
+          ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 20 && newData.val().matches(/^[a-z0-9._]+$/) && !newData.val().beginsWith('.') && !newData.val().endsWith('.') && !newData.val().contains('..') && (!data.exists() || data.val() === newData.val()) && newData.parent().parent().parent().child('usernames').child(newData.val().replace('.', ',')).val() === $uid"
+        },
+        "displayName": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 50"
+        },
+        "photoURL": {
+          ".validate": "newData.isString() && newData.val().beginsWith('https://') && newData.val().length <= 500"
+        },
+        "bio": {
+          ".validate": "newData.isString() && newData.val().length <= 160"
+        },
+        // Interesses: { tipos: { filme: true }, generos: { terror: true } }
+        "interests": {
+          "tipos": {
+            "$tipo": { ".validate": "$tipo.matches(/^[a-z]+$/) && $tipo.length <= 20 && newData.val() === true" }
+          },
+          "generos": {
+            "$genero": { ".validate": "$genero.matches(/^[a-z]+$/) && $genero.length <= 20 && newData.val() === true" }
+          },
+          "$outro": { ".validate": false }
+        },
+        // Data de criação: hora do servidor e imutável
+        "createdAt": {
+          ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)"
+        },
+        // Contadores: nascem zerados e o dono não mexe neles
+        // (as Fases 3 e 4 liberam +1/-1 junto com a ação que os justifica)
+        "stats": {
+          ".validate": "newData.hasChildren(['followers', 'following', 'reviews', 'watched'])",
+          "$contador": {
+            ".validate": "$contador.matches(/^(followers|following|reviews|watched)$/) && newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === 0)"
+          }
+        },
+        "$outro": { ".validate": false }
+      }
+    },
+
+    // ---------------------------------------------------------------
+    // Reserva de @: leitura pública (busca de pessoas), cada @ só pode
+    // ser reivindicado uma vez e sempre junto com o próprio perfil
+    // ---------------------------------------------------------------
+    "usernames": {
+      ".read": true,
+      "$username": {
+        ".write": "auth != null && !data.exists() && newData.val() === auth.uid",
+        ".validate": "newData.isString() && $username.length >= 3 && $username.length <= 20 && $username.matches(/^[a-z0-9_,]+$/) && !$username.matches(/^(admin|poscredito|poscreditos|suporte|moderacao|root|oficial)$/) && newData.parent().parent().child('users').child(auth.uid).child('username').val().replace('.', ',') === $username"
+      }
+    }
   }
 }

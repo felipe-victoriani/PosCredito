@@ -20,9 +20,9 @@ describe('montarRequisicao — rotas permitidas', () => {
   });
 
   it('aceita detalhes com append_to_response permitido', () => {
-    const url = montar({ path: '/tv/209867', append_to_response: 'credits,videos,similar' });
+    const url = montar({ path: '/tv/209867', append_to_response: 'credits,videos,recommendations,similar' });
     expect(url.pathname).toBe('/3/tv/209867');
-    expect(url.searchParams.get('append_to_response')).toBe('credits,videos,similar');
+    expect(url.searchParams.get('append_to_response')).toBe('credits,videos,recommendations,similar');
   });
 
   it('aceita watch/providers, trending, discover e genre', () => {

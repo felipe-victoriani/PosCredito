@@ -43,7 +43,11 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
-    /* Espaço para a barra inferior fixa + área segura do iPhone */
+  }
+
+  /* Espaço para a barra inferior fixa + área segura do iPhone
+     (só nas páginas que têm a barra; o onboarding não tem) */
+  body:has(> .nav-inferior) {
     padding-bottom: calc(var(--altura-nav) + env(safe-area-inset-bottom));
   }
 
