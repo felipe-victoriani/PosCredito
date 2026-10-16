@@ -35,6 +35,7 @@ export {
   limitToLast,
   orderByChild,
   orderByKey,
+  orderByValue,
   query,
   ref,
   runTransaction,

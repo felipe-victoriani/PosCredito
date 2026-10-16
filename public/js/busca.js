@@ -37,6 +37,8 @@ const TEMPO_MAX_PESSOAS_MS = 4000;
 // Ordem fixa dos chips de tipo (pessoas por último, como nas referências)
 const ORDEM_TIPOS = ['filme', 'serie', 'anime', 'dorama', 'pessoa'];
 const ROTULOS_FILTRO = { ...ROTULO_TIPO_PLURAL, pessoa: 'Pessoas' };
+// Veio do botão "+": os links levam ao título já com o editor aberto
+const SUFIXO_LINK = new URLSearchParams(location.search).get('avaliar') === '1' ? '&avaliar=1' : '';
 
 // Elementos da página
 const form = document.getElementById('form-busca');
@@ -84,7 +86,7 @@ function criarLinhaResultado({ item, tipo, perfil }) {
   if (tipo === 'pessoa') return criarLinhaPessoa(perfil);
   const original = tituloOriginalDe(item);
   return el('li', {}, [
-    el('a', { classe: 'resultado', atributos: { href: linkTitulo(item) } }, [
+    el('a', { classe: 'resultado', atributos: { href: linkTitulo(item) + SUFIXO_LINK } }, [
       criarPoster(item),
       el('div', { classe: 'resultado__info' }, [
         el('span', { classe: 'resultado__nome', texto: tituloDe(item) }),
@@ -249,7 +251,7 @@ async function carregarEmAlta() {
   try {
     const dados = await tmdbGet('/trending/all/week');
     const itens = (dados.results ?? []).filter((i) => i.media_type === 'movie' || i.media_type === 'tv').slice(0, 12);
-    gradeEmAlta.replaceChildren(...itens.map((item) => criarCartaoPoster(item)));
+    gradeEmAlta.replaceChildren(...itens.map((item) => criarCartaoPoster(item, item.media_type, SUFIXO_LINK)));
   } catch (erro) {
     console.error('[busca] falha em alta', erro);
     // Não é essencial: some com a seção em vez de mostrar erro

@@ -106,14 +106,26 @@
         <button id="botao-editar" class="botao botao--secundario" type="button" hidden>Editar perfil</button>
       </div>
 
-      <section class="secao" aria-labelledby="h-reviews">
-        <h2 id="h-reviews" class="rotulo">Reviews</h2>
-        <p class="vazio-secao">Nenhuma review ainda.</p>
-      </section>
+      <!-- Abas: setas do teclado trocam de aba (padrão ARIA tabs) -->
+      <div id="abas-perfil" class="abas" role="tablist" aria-label="Conteúdo do perfil">
+        <button id="aba-reviews" class="abas__aba" type="button" role="tab" aria-selected="true" aria-controls="painel-reviews" data-painel="reviews">Reviews</button>
+        <button id="aba-favorites" class="abas__aba" type="button" role="tab" aria-selected="false" aria-controls="painel-favorites" data-painel="favorites" tabindex="-1">Favoritos</button>
+        <button id="aba-watched" class="abas__aba" type="button" role="tab" aria-selected="false" aria-controls="painel-watched" data-painel="watched" tabindex="-1">Já vi</button>
+        <button id="aba-watchlist" class="abas__aba" type="button" role="tab" aria-selected="false" aria-controls="painel-watchlist" data-painel="watchlist" tabindex="-1">Quero ver</button>
+      </div>
 
-      <section id="listas" class="secao" aria-labelledby="h-listas">
-        <h2 id="h-listas" class="rotulo">Listas</h2>
-        <p class="vazio-secao">As listas Quero ver, Já vi e Favoritos aparecem aqui em breve.</p>
+      <section id="painel-reviews" class="painel" role="tabpanel" aria-labelledby="aba-reviews">
+        <ul id="lista-reviews-perfil" class="lista-reviews"></ul>
+        <button id="mais-reviews-perfil" class="botao botao--secundario botao--bloco" type="button" hidden>Ver mais reviews</button>
+      </section>
+      <section id="painel-favorites" class="painel" role="tabpanel" aria-labelledby="aba-favorites" hidden>
+        <ul id="grade-favorites" class="grade-posters"></ul>
+      </section>
+      <section id="painel-watched" class="painel" role="tabpanel" aria-labelledby="aba-watched" hidden>
+        <ul id="grade-watched" class="grade-posters"></ul>
+      </section>
+      <section id="painel-watchlist" class="painel" role="tabpanel" aria-labelledby="aba-watchlist" hidden>
+        <ul id="grade-watchlist" class="grade-posters"></ul>
       </section>
     </section>
 

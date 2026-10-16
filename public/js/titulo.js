@@ -270,6 +270,25 @@ async function carregar() {
 
   conteudo.removeAttribute('aria-busy');
   corpo.classList.remove('carregando');
+
+  // Parte social (Firebase) carregada à parte: se falhar, o resto da página fica
+  carregarComunidade(dados, mediaType);
+}
+
+/** Importa e liga nota da comunidade, listas, reviews e editor. */
+async function carregarComunidade(detalhes, mediaType) {
+  try {
+    const { iniciarComunidade } = await import('./titulo-comunidade.js');
+    await iniciarComunidade({ detalhes, mediaType });
+  } catch (erro) {
+    console.error('[titulo] comunidade', erro);
+    $('nota-texto').textContent = 'Notas indisponíveis agora.';
+    const aviso = $('aviso-comunidade');
+    aviso.textContent = 'Não foi possível conectar à comunidade. Recarregue a página para avaliar ou salvar em listas.';
+    aviso.hidden = false;
+    $('lista-reviews').replaceChildren(el('li', {}, [criarEstado({ tipo: 'erro', mensagem: 'Não foi possível carregar as reviews.' })]));
+    $('lista-reviews').removeAttribute('aria-busy');
+  }
 }
 
 // ---------- Eventos e início ----------

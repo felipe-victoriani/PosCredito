@@ -34,6 +34,15 @@ test.describe('Busca → página do título', () => {
     await expect(page.getByText('Este produto usa a API do TMDB, mas não é endossado ou certificado pelo TMDB.')).toBeVisible();
   });
 
+  test('sem conexão com a comunidade, o resto da página do título funciona', async ({ page }) => {
+    // simularTmdb bloqueia o SDK do Firebase
+    await simularTmdb(page);
+    await page.goto('/titulo.html?id=tv_209867');
+    await expect(page.getByText('Notas indisponíveis agora.')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Onde assistir' })).toContainText('Crunchyroll');
+    await expect(page.getByRole('button', { name: 'Avaliar' })).toBeDisabled();
+  });
+
   test('título sem streaming no Brasil mostra aviso', async ({ page }) => {
     await simularTmdb(page, { semProvedores: true });
     await page.goto('/titulo.html?id=tv_209867');

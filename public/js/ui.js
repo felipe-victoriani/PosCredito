@@ -53,6 +53,7 @@ const ICONES = {
   sair: ['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'm16 17 5-5-5-5', 'M21 12H9'],
   fechar: ['M18 6 6 18', 'm6 6 12 12'],
   editar: ['M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'],
+  olho: ['M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0', 'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0'],
 };
 
 /**
@@ -135,17 +136,66 @@ export function criarPoster(item, { tamanho = 'w342', alt = '', prioridade = fal
   return moldura;
 }
 
-/** Cartão de grade: pôster + nome, levando à página do título. */
-export function criarCartaoPoster(item, mediaType = item.media_type) {
+/**
+ * Cartão de grade: pôster + nome, levando à página do título.
+ * @param {string} [sufixoLink] - acrescentado ao link (ex.: "&avaliar=1")
+ */
+export function criarCartaoPoster(item, mediaType = item.media_type, sufixoLink = '') {
   const tipo = classificarTipo(item, mediaType);
   const ano = anoDe(item);
   return el('li', {}, [
-    el('a', { classe: 'cartao-poster', atributos: { href: linkTitulo(item, mediaType) } }, [
+    el('a', { classe: 'cartao-poster', atributos: { href: linkTitulo(item, mediaType) + sufixoLink } }, [
       criarPoster(item),
       el('span', { classe: 'cartao-poster__nome', texto: tituloDe(item) }),
       el('span', { classe: 'cartao-poster__meta', texto: [ROTULO_TIPO[tipo], ano].filter(Boolean).join(' · ') }),
     ]),
   ]);
+}
+
+/**
+ * Cartão de grade a partir dos dados guardados no banco (listas e
+ * reviews), sem precisar chamar o TMDB.
+ * @param {{mediaKey: string, title: string, tipo: string, posterPath?: string, year?: string}} meta
+ */
+export function criarCartaoGuardado(meta) {
+  return el('li', {}, [
+    el('a', { classe: 'cartao-poster', atributos: { href: `titulo.html?id=${meta.mediaKey}` } }, [
+      criarPoster({ poster_path: meta.posterPath, title: meta.title }),
+      el('span', { classe: 'cartao-poster__nome', texto: meta.title }),
+      el('span', { classe: 'cartao-poster__meta', texto: [ROTULO_TIPO[meta.tipo], meta.year].filter(Boolean).join(' · ') }),
+    ]),
+  ]);
+}
+
+// ---------- Estrelas ----------
+
+/**
+ * Cria uma estrela visual: contorno cinza com preenchimento amarelo
+ * inteiro, pela metade ou vazio (classe estrela--cheia/meia/vazia).
+ */
+export function criarEstrela(preenchimento, tamanho = 18) {
+  const estrela = el('span', { classe: `estrela estrela--${preenchimento}`, atributos: { 'aria-hidden': 'true' } });
+  const fundo = icone('estrela', { tamanho, preenchido: true });
+  const frente = icone('estrela', { tamanho, preenchido: true });
+  fundo.classList.add('estrela__fundo');
+  frente.classList.add('estrela__frente');
+  estrela.append(fundo, frente);
+  return estrela;
+}
+
+/** Preenchimento da estrela n (1 a 5) para uma nota. */
+export function preenchimentoEstrela(nota, n) {
+  if (nota >= n) return 'cheia';
+  if (nota >= n - 0.5) return 'meia';
+  return 'vazia';
+}
+
+/** Cinco estrelas (só leitura), lidas como "Nota 4,5 de 5". */
+export function criarEstrelas(nota, tamanho = 18) {
+  const rotulo = `Nota ${nota.toLocaleString('pt-BR')} de 5`;
+  const grupo = el('span', { classe: 'estrelas', atributos: { role: 'img', 'aria-label': rotulo } });
+  for (let n = 1; n <= 5; n += 1) grupo.append(criarEstrela(preenchimentoEstrela(nota, n), tamanho));
+  return grupo;
 }
 
 // ---------- Pessoas ----------

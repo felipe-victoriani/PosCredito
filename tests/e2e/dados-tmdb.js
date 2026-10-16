@@ -80,8 +80,8 @@ export async function bloquearRecursosExternos(page, { permitirFirebase = false 
  * Intercepta /api/tmdb na página e responde conforme o "path" pedido.
  * Imagens externas são bloqueadas para os testes ficarem offline.
  */
-export async function simularTmdb(page, { semProvedores = false } = {}) {
-  await bloquearRecursosExternos(page);
+export async function simularTmdb(page, { semProvedores = false, permitirFirebase = false } = {}) {
+  await bloquearRecursosExternos(page, { permitirFirebase });
   await page.route('**/api/tmdb?**', (rota) => {
     const caminho = new URL(rota.request().url()).searchParams.get('path');
     const respostas = {

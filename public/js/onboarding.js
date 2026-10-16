@@ -8,6 +8,7 @@
 import { criarPerfil, ehPermissaoNegada, obterPerfil, usernameDisponivel, usuarioAtual } from './auth.js';
 import { criarSeletor, GENEROS, lerSelecao, montarInteresses, TIPOS } from './interesses.js';
 import { LIMITES, normalizarUsername, validarUsername } from './perfil-regras.js';
+import { destinoSeguro } from './reviews-regras.js';
 import { criarAvatar } from './ui.js';
 
 // Espera após a última tecla antes de checar se o @ está livre (ms)
@@ -160,7 +161,8 @@ async function salvar() {
       bio: campoBio.value.trim().slice(0, LIMITES.BIO_MAX),
       interests: montarInteresses(lerSelecao(seletorTipos), lerSelecao(seletorGeneros)),
     });
-    location.replace('perfil.html');
+    // Veio de uma página pedindo login (ex.: "Avaliar"): volta para ela
+    location.replace(destinoSeguro(new URLSearchParams(location.search).get('voltar')) ?? 'perfil.html');
   } catch (erro) {
     console.error('[onboarding] salvar perfil', erro);
     salvando = false;

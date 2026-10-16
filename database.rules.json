@@ -42,12 +42,13 @@
         "createdAt": {
           ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)"
         },
-        // Contadores: nascem zerados e o dono não mexe neles
-        // (as Fases 3 e 4 liberam +1/-1 junto com a ação que os justifica)
+        // Contadores: nascem zerados. O dono só move "reviews" e "watched"
+        // de 1 em 1 (junto com a review / a lista "Já vi").
+        // followers/following ficam travados até a Fase 4.
         "stats": {
           ".validate": "newData.hasChildren(['followers', 'following', 'reviews', 'watched'])",
           "$contador": {
-            ".validate": "$contador.matches(/^(followers|following|reviews|watched)$/) && newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === 0)"
+            ".validate": "$contador.matches(/^(followers|following|reviews|watched)$/) && newData.isNumber() && (data.exists() ? (newData.val() === data.val() || ($contador.matches(/^(reviews|watched)$/) && newData.val() >= 0 && (newData.val() === data.val() + 1 || newData.val() === data.val() - 1))) : newData.val() === 0)"
           }
         },
         "$outro": { ".validate": false }
@@ -63,6 +64,105 @@
       "$username": {
         ".write": "auth != null && !data.exists() && newData.val() === auth.uid",
         ".validate": "newData.isString() && $username.length >= 3 && $username.length <= 20 && $username.matches(/^[a-z0-9_,]+$/) && !$username.matches(/^(admin|poscredito|poscreditos|suporte|moderacao|root|oficial)$/) && newData.parent().parent().child('users').child(auth.uid).child('username').val().replace('.', ',') === $username"
+      }
+    },
+
+    // ---------------------------------------------------------------
+    // Reviews: id = "{uid}_{mediaKey}" (uma por pessoa por título).
+    // Toda escrita vem num update multi-path junto com titleReviews,
+    // userReviews e titleStats; as regras exigem que tudo bata.
+    // ---------------------------------------------------------------
+    "reviews": {
+      ".indexOn": ["createdAt"],
+      "$reviewId": {
+        ".read": true,
+        // Só a dona escreve. Excluir exige baixar a estatística do título
+        // e remover as entradas dos índices na mesma escrita.
+        ".write": "auth != null && $reviewId.beginsWith(auth.uid + '_') && (!data.exists() || data.child('uid').val() === auth.uid) && (newData.exists() || (newData.parent().parent().child('titleStats').child(data.child('mediaKey').val()).child('ratingCount').val() === root.child('titleStats').child(data.child('mediaKey').val()).child('ratingCount').val() - 1 && !newData.parent().parent().child('titleReviews').child(data.child('mediaKey').val()).child($reviewId).exists() && !newData.parent().parent().child('userReviews').child(auth.uid).child($reviewId).exists()))",
+        // Criar/editar: índices com a mesma data e estatística do título
+        // ajustada exatamente pela diferença da nota
+        ".validate": "newData.hasChildren(['uid', 'mediaKey', 'mediaType', 'title', 'tipo', 'rating', 'status', 'spoiler', 'text', 'createdAt', 'updatedAt', 'likeCount', 'commentCount']) && $reviewId === auth.uid + '_' + newData.child('mediaKey').val() && newData.parent().parent().child('titleReviews').child(newData.child('mediaKey').val()).child($reviewId).val() === newData.child('createdAt').val() && newData.parent().parent().child('userReviews').child(auth.uid).child($reviewId).val() === newData.child('createdAt').val() && newData.parent().parent().child('titleStats').child(newData.child('mediaKey').val()).child('ratingSum').val() === (root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingSum').exists() ? root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingSum').val() : 0) + newData.child('rating').val() - (data.exists() ? data.child('rating').val() : 0) && newData.parent().parent().child('titleStats').child(newData.child('mediaKey').val()).child('ratingCount').val() === (root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingCount').exists() ? root.child('titleStats').child(newData.child('mediaKey').val()).child('ratingCount').val() : 0) + (data.exists() ? 0 : 1)",
+        "uid": { ".validate": "newData.val() === auth.uid" },
+        "mediaKey": { ".validate": "newData.isString() && newData.val().matches(/^(movie|tv)_[0-9]+$/) && newData.val().length <= 20 && (!data.exists() || data.val() === newData.val())" },
+        "mediaType": { ".validate": "newData.isString() && newData.val().matches(/^(movie|tv)$/) && newData.parent().child('mediaKey').val().beginsWith(newData.val() + '_')" },
+        "title": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200" },
+        "tipo": { ".validate": "newData.isString() && newData.val().matches(/^(filme|serie|anime|dorama)$/)" },
+        "posterPath": { ".validate": "newData.isString() && newData.val().length <= 64 && newData.val().matches(/^\\/[A-Za-z0-9_.-]+$/)" },
+        "year": { ".validate": "newData.isString() && newData.val().matches(/^[0-9][0-9][0-9][0-9]$/)" },
+        // Nota de 0,5 a 5 em meias estrelas
+        "rating": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 5 && (newData.val() * 2) % 1 === 0" },
+        "status": { ".validate": "newData.isString() && newData.val().matches(/^(assisti|reassisti|abandonei)$/)" },
+        "spoiler": { ".validate": "newData.isBoolean()" },
+        "text": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+        "createdAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
+        "updatedAt": { ".validate": "newData.val() === now" },
+        // Curtidas e comentários: nascem zerados (a Fase 4 libera +1/-1)
+        "likeCount": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === 0)" },
+        "commentCount": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === 0)" },
+        "$outro": { ".validate": false }
+      }
+    },
+
+    // Índice: reviews de um título, valor = createdAt (ordenar por valor)
+    "titleReviews": {
+      "$mediaKey": {
+        ".read": true,
+        ".indexOn": ".value",
+        "$reviewId": {
+          ".write": "auth != null && $reviewId === auth.uid + '_' + $mediaKey && (newData.exists() || !newData.parent().parent().parent().child('reviews').child($reviewId).exists())",
+          ".validate": "newData.isNumber() && newData.val() === newData.parent().parent().parent().child('reviews').child($reviewId).child('createdAt').val()"
+        }
+      }
+    },
+
+    // Índice: reviews de uma pessoa, valor = createdAt
+    "userReviews": {
+      "$uid": {
+        ".read": true,
+        ".indexOn": ".value",
+        "$reviewId": {
+          ".write": "auth != null && auth.uid === $uid && $reviewId.beginsWith($uid + '_') && (newData.exists() || !newData.parent().parent().parent().child('reviews').child($reviewId).exists())",
+          ".validate": "newData.isNumber() && newData.val() === newData.parent().parent().parent().child('reviews').child($reviewId).child('createdAt').val()"
+        }
+      }
+    },
+
+    // Soma e contagem das notas de cada título. Só muda pela diferença
+    // da review de quem está escrevendo (não dá para inflar a média).
+    "titleStats": {
+      "$mediaKey": {
+        ".read": true,
+        ".write": "auth != null && newData.exists()",
+        ".validate": "newData.hasChildren(['ratingSum', 'ratingCount'])",
+        "ratingSum": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() === (data.exists() ? data.val() : 0) + (newData.parent().parent().parent().child('reviews').child(auth.uid + '_' + $mediaKey).exists() ? newData.parent().parent().parent().child('reviews').child(auth.uid + '_' + $mediaKey).child('rating').val() : 0) - (root.child('reviews').child(auth.uid + '_' + $mediaKey).exists() ? root.child('reviews').child(auth.uid + '_' + $mediaKey).child('rating').val() : 0)"
+        },
+        "ratingCount": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() === (data.exists() ? data.val() : 0) + (newData.parent().parent().parent().child('reviews').child(auth.uid + '_' + $mediaKey).exists() ? 1 : 0) - (root.child('reviews').child(auth.uid + '_' + $mediaKey).exists() ? 1 : 0)"
+        },
+        "$outro": { ".validate": false }
+      }
+    },
+
+    // ---------------------------------------------------------------
+    // Listas pessoais (públicas no perfil; só a dona escreve)
+    // ---------------------------------------------------------------
+    "lists": {
+      "$uid": {
+        ".read": true,
+        "$lista": {
+          ".indexOn": ["addedAt"],
+          "$mediaKey": {
+            ".write": "auth != null && auth.uid === $uid && $lista.matches(/^(watchlist|watched|favorites)$/)",
+            ".validate": "$mediaKey.matches(/^(movie|tv)_[0-9]+$/) && $mediaKey.length <= 20 && newData.hasChildren(['addedAt', 'title', 'tipo'])",
+            "addedAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
+            "title": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200" },
+            "tipo": { ".validate": "newData.isString() && newData.val().matches(/^(filme|serie|anime|dorama)$/)" },
+            "posterPath": { ".validate": "newData.isString() && newData.val().length <= 64 && newData.val().matches(/^\\/[A-Za-z0-9_.-]+$/)" },
+            "year": { ".validate": "newData.isString() && newData.val().matches(/^[0-9][0-9][0-9][0-9]$/)" },
+            "$outro": { ".validate": false }
+          }
+        }
       }
     }
   }

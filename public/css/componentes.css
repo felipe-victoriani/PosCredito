@@ -135,7 +135,9 @@
     font-size: var(--texto-sm);
     font-weight: var(--peso-forte);
     line-height: 1.2;
-    overflow-wrap: anywhere;
+    /* Quebra palavra longa com hífen (lang="pt-BR"), nunca no meio sem hífen */
+    overflow-wrap: break-word;
+    hyphens: auto;
   }
 
   /* ---------- Grade de pôsteres ---------- */
@@ -501,6 +503,164 @@
   }
   .seletor--chip { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
 
+  /* ---------- Botões extras ---------- */
+  /* Liga/desliga (Quero ver, Já vi, Favorito): ativo fica amarelo */
+  .botao--alternar[aria-pressed="true"] {
+    border-color: var(--cor-destaque);
+    color: var(--cor-destaque);
+    & svg { fill: currentColor; fill-opacity: 0.2; }
+  }
+  .botao--icone-so { padding-inline: 0; }
+  .botao--perigo {
+    border: 1px solid color-mix(in oklch, var(--cor-perigo) 60%, transparent);
+    color: var(--cor-perigo);
+    &:not(:disabled):hover { background: color-mix(in oklch, var(--cor-perigo) 12%, transparent); }
+  }
+
+  /* ---------- Estrelas ---------- */
+  .estrelas { display: inline-flex; gap: 0.125rem; vertical-align: middle; }
+  /* Duas camadas: fundo cinza + frente amarela recortada (meia = metade) */
+  .estrela { position: relative; display: inline-grid; line-height: 0; }
+  .estrela > svg { grid-area: 1 / 1; stroke-width: 1.5; }
+  .estrela__fundo { color: var(--cor-superficie-2); }
+  .estrela__frente { color: var(--cor-destaque); }
+  .estrela--vazia .estrela__frente { clip-path: inset(0 100% 0 0); }
+  .estrela--meia .estrela__frente { clip-path: inset(0 50% 0 0); }
+
+  /* ---------- Cartão de review ---------- */
+  .lista-reviews { display: flex; flex-direction: column; gap: var(--esp-3); }
+  .review {
+    display: flex;
+    flex-direction: column;
+    gap: var(--esp-3);
+    padding: var(--esp-5);
+    background: var(--cor-superficie);
+    border-radius: var(--raio-lg);
+  }
+  .review__cabecalho { display: flex; align-items: center; gap: var(--esp-3); }
+  .review__autor { display: flex; flex-direction: column; min-width: 0; }
+  .review__nome {
+    font-weight: var(--peso-forte);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    &:is(a):hover { text-decoration: underline; }
+  }
+  .review__meta-autor { font-family: var(--fonte-mono); font-size: var(--texto-sm); color: var(--cor-texto-2); }
+  .review__titulo {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+    gap: var(--esp-3);
+    align-items: center;
+    text-decoration: none;
+    & .poster { border-radius: var(--raio-sm); }
+    & .poster__placeholder { font-size: var(--texto-xs); }
+  }
+  .review__titulo-nome { font-size: var(--texto-lg); font-weight: var(--peso-extra); line-height: 1.2; }
+  .review__ano { color: var(--cor-texto-2); font-weight: var(--peso-normal); }
+  .review__nota { display: flex; flex-wrap: wrap; align-items: center; gap: var(--esp-2); }
+  .review__status { font-size: var(--texto-sm); color: var(--cor-texto-2); }
+  .review__texto { white-space: pre-line; overflow-wrap: anywhere; }
+
+  /* Spoiler: texto borrado com botão por cima até tocar */
+  .review__spoiler { position: relative; }
+  .review__texto--spoiler {
+    filter: blur(6px);
+    user-select: none;
+    min-height: 3em;
+  }
+  .review__revelar {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--esp-2);
+    min-height: var(--alvo-toque);
+    border-radius: var(--raio-md);
+    background: color-mix(in oklch, var(--cor-superficie) 55%, transparent);
+    font-weight: var(--peso-forte);
+  }
+
+  .esqueleto--review { height: 9rem; border-radius: var(--raio-lg); }
+
+  /* ---------- Abas ---------- */
+  .abas {
+    display: flex;
+    gap: var(--esp-5);
+    margin-top: var(--esp-6);
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+    border-bottom: 1px solid var(--cor-borda);
+    overflow-x: auto;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+  .abas__aba {
+    flex-shrink: 0;
+    min-height: 3rem;
+    font-size: var(--texto-lg);
+    font-weight: var(--peso-extra);
+    color: var(--cor-texto-2);
+    border-bottom: 3px solid transparent;
+    &[aria-selected="true"] { color: var(--cor-texto); border-bottom-color: var(--cor-destaque); }
+  }
+  .painel { padding-top: var(--esp-5); }
+
+  /* ---------- Interruptor (switch) ---------- */
+  .interruptor {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esp-4);
+    min-height: 4rem;
+    cursor: pointer;
+    /* O checkbox real fica invisível sobre o trilho (continua focável) */
+    & input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  }
+  .interruptor__textos { display: flex; flex-direction: column; }
+  .interruptor__titulo { font-weight: var(--peso-extra); font-size: var(--texto-lg); }
+  .interruptor__sub { font-size: var(--texto-sm); color: var(--cor-texto-2); }
+  .interruptor__trilho {
+    position: relative;
+    flex-shrink: 0;
+    width: 3.5rem;
+    height: 2rem;
+    border-radius: var(--raio-pilula);
+    background: var(--cor-superficie-2);
+    transition: background-color var(--duracao-media);
+    /* Bolinha */
+    &::after {
+      content: "";
+      position: absolute;
+      top: 0.25rem;
+      left: 0.25rem;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: var(--cor-texto-2);
+      transition: translate var(--duracao-media) var(--curva-saida), background-color var(--duracao-media);
+    }
+  }
+  .interruptor:has(input:checked) .interruptor__trilho { background: var(--cor-destaque); }
+  .interruptor:has(input:checked) .interruptor__trilho::after { translate: 1.5rem 0; background: var(--cor-destaque-texto); }
+  .interruptor:has(input:focus-visible) .interruptor__trilho { outline: 3px solid var(--cor-destaque); outline-offset: 3px; }
+
+  /* ---------- Rádios com cara de chip (Assisti / Reassisti / Abandonei) ---------- */
+  .chip-radio {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--alvo-toque);
+    padding-inline: var(--esp-5);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-pilula);
+    font-weight: var(--peso-forte);
+    cursor: pointer;
+    & input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    &:has(input:checked) { background: var(--cor-destaque); border-color: var(--cor-destaque); color: var(--cor-destaque-texto); }
+    &:has(input:focus-visible) { outline: 3px solid var(--cor-destaque); outline-offset: 3px; }
+  }
+
   /* ---------- Botão de ícone sem fundo ---------- */
   .botao-icone--plano { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
   .botao-texto--neutro { color: var(--cor-texto-2); }
@@ -548,6 +708,78 @@
   .dialogo__form { padding: var(--esp-5) var(--esp-5) 0; }
   .dialogo__topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--esp-4); }
   .dialogo__titulo { font-size: var(--texto-xl); }
+  .dialogo__texto { margin-top: var(--esp-3); color: var(--cor-texto-2); }
+  .dialogo--pequeno { width: min(100% - 2rem, 24rem); }
+  .dialogo--pequeno .dialogo__form { padding-bottom: var(--esp-5); }
+  .dialogo__acoes--simples { position: static; margin: var(--esp-6) 0 0; padding: 0; border: 0; }
+
+  /* Tela cheia no celular (editor de review); janela centralizada no desktop */
+  .dialogo--cheio {
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--cor-fundo);
+    & .campo__texto { background: var(--cor-superficie); }
+    @media (min-width: 48rem) {
+      width: min(100% - 2rem, 40rem);
+      height: auto;
+      max-height: 90dvh;
+      margin: auto;
+      border: 1px solid var(--cor-borda);
+      border-radius: var(--raio-lg);
+    }
+  }
+
+  /* ---------- Editor de review ---------- */
+  .editor-review__topo {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 3rem 1fr auto;
+    align-items: center;
+    gap: var(--esp-2);
+    padding: calc(var(--esp-3) + env(safe-area-inset-top)) var(--gutter) var(--esp-3);
+    background: var(--cor-fundo);
+    border-bottom: 1px solid var(--cor-borda);
+  }
+  .editor-review__titulo { text-align: center; font-size: var(--texto-lg); }
+  .editor-review__corpo { padding: var(--esp-5) var(--gutter) calc(var(--esp-8) + env(safe-area-inset-bottom)); }
+  .editor-review__obra { display: grid; grid-template-columns: 4.5rem 1fr; gap: var(--esp-4); align-items: center; }
+  .editor-review__nome { font-size: var(--texto-lg); font-weight: var(--peso-extra); line-height: 1.2; }
+  .editor-review__meta { color: var(--cor-texto-2); }
+  .editor-review__rotulo { display: block; font-size: var(--texto-lg); font-weight: var(--peso-extra); margin-bottom: var(--esp-3); padding: 0; }
+  .editor-review__opcional { color: var(--cor-texto-2); font-weight: var(--peso-normal); }
+
+  /* Seletor de nota: 5 estrelas, cada uma com 2 metades clicáveis */
+  .seletor-nota, .grupo-status { border: 0; padding: 0; margin: 0; }
+  .seletor-nota { margin-block: var(--esp-8) var(--esp-6); text-align: center; }
+  .seletor-nota__estrelas {
+    display: inline-flex;
+    gap: var(--esp-2);
+    padding: var(--esp-1);
+    border-radius: var(--raio-md);
+    &:has(input:focus-visible) { outline: 3px solid var(--cor-destaque); outline-offset: 3px; }
+  }
+  .estrela-input { position: relative; display: inline-grid; }
+  .estrela-input__metade { position: absolute; top: 0; bottom: 0; width: 50%; cursor: pointer; }
+  .estrela-input__metade--esq { left: 0; }
+  .estrela-input__metade--dir { right: 0; }
+  .seletor-nota__ajuda { margin-top: var(--esp-3); color: var(--cor-texto-2); & strong { color: var(--cor-texto); } }
+
+  .grupo-status { margin-bottom: var(--esp-6); }
+  .grupo-status__opcoes { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
+
+  .opcoes-review {
+    margin-block: var(--esp-2) var(--esp-4);
+    padding: var(--esp-2) var(--esp-5);
+    background: var(--cor-superficie);
+    border-radius: var(--raio-lg);
+  }
   .dialogo__acoes {
     /* Fica grudada no fim do diálogo enquanto o conteúdo rola */
     position: sticky;
@@ -651,12 +883,13 @@
     color: var(--cor-destaque);
     line-height: 1;
   }
-  .nota-comunidade__texto { font-weight: var(--peso-forte); }
-  .nota-comunidade__sub { font-size: var(--texto-sm); color: var(--cor-texto-2); }
+  .nota-comunidade__info { display: flex; flex-direction: column; gap: var(--esp-1); }
+  .nota-comunidade__texto { color: var(--cor-texto-2); }
 
   .acoes-titulo {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(6.75rem, 1fr));
+    /* Avaliar, Quero ver, Já vi + coração só com ícone */
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 3.25rem;
     gap: var(--esp-2);
     margin-top: var(--esp-4);
     /* Três botões lado a lado no celular: texto nunca quebra linha */
