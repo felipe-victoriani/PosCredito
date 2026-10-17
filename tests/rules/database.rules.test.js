@@ -366,21 +366,55 @@ async function seguir(uid, alvo, sim = true) {
   return update(ref(dbDe(uid)), mapa);
 }
 
-/** Curtir/descurtir como o app. */
+/** Curtir/descurtir como o app (com o aviso para a dona da review). */
 async function curtir(uid, reviewId, sim = true) {
-  const mapa = montarCurtida({ uid, reviewId, curtir: sim, likeCountAtual: await valor(`reviews/${reviewId}/likeCount`) });
+  const mapa = montarCurtida({
+    uid,
+    reviewId,
+    curtir: sim,
+    likeCountAtual: await valor(`reviews/${reviewId}/likeCount`),
+    donoReview: await valor(`reviews/${reviewId}/uid`),
+    carimbo: serverTimestamp(),
+  });
   return update(ref(dbDe(uid)), mapa);
 }
 
-/** Comentar como o app. */
-async function comentar(uid, reviewId, commentId, texto = 'Concordo!') {
-  const mapa = montarComentario({ uid, reviewId, commentId, texto, commentCountAtual: await valor(`reviews/${reviewId}/commentCount`), carimbo: serverTimestamp() });
+/**
+ * Comentar como o app. Com respondeA (id de um comentário), vira
+ * resposta na conversa daquele comentário.
+ */
+async function comentar(uid, reviewId, commentId, texto = 'Concordo!', respondeA = null) {
+  let resposta = null;
+  if (respondeA) {
+    const alvo = await valor(`comments/${reviewId}/${respondeA}`);
+    resposta = { parentId: alvo.parentId ?? respondeA, replyToId: respondeA, replyToUid: alvo.uid };
+  }
+  const mapa = montarComentario({
+    uid,
+    reviewId,
+    commentId,
+    texto,
+    commentCountAtual: await valor(`reviews/${reviewId}/commentCount`),
+    carimbo: serverTimestamp(),
+    donoReview: await valor(`reviews/${reviewId}/uid`),
+    resposta,
+  });
   return update(ref(dbDe(uid)), mapa);
 }
 
-/** Excluir comentário como o app (por quem pedir). */
+/** Excluir comentário como o app (por quem pedir), tirando os avisos permitidos. */
 async function excluirComentario(quem, reviewId, commentId) {
-  const mapa = montarExclusaoComentario({ reviewId, commentId, commentCountAtual: await valor(`reviews/${reviewId}/commentCount`) });
+  const comentario = await valor(`comments/${reviewId}/${commentId}`);
+  const respondido = comentario?.replyToId ? (await valor(`comments/${reviewId}/${comentario.replyToId}/uid`)) : null;
+  const mapa = montarExclusaoComentario({
+    reviewId,
+    commentId,
+    commentCountAtual: await valor(`reviews/${reviewId}/commentCount`),
+    quem,
+    autorComentario: comentario?.uid,
+    donoReview: await valor(`reviews/${reviewId}/uid`),
+    respondido,
+  });
   return update(ref(dbDe(quem)), mapa);
 }
 
@@ -520,6 +554,170 @@ describe('comentários', () => {
   it('comentário não pode ser editado', async () => {
     await comentar('bob', RID, 'c1');
     await assertFails(set(ref(dbDe('bob'), `comments/${RID}/c1/text`), 'Editado'));
+  });
+});
+
+describe('respostas a comentários', () => {
+  const RID = idReview('alice', 'tv_209867');
+
+  beforeEach(async () => {
+    await criarPerfil(dbDe('alice'), 'alice', 'alice');
+    await criarPerfil(dbDe('bob'), 'bob', 'bob');
+    await criarPerfil(dbDe('carol'), 'carol', 'carol');
+    await publicar('alice');
+    await comentar('bob', RID, 'c1');
+  });
+
+  /** Resposta montada à mão (para testar dados fora do padrão). */
+  const respostaManual = async (uid, commentId, parentId, replyToId) =>
+    update(
+      ref(dbDe(uid)),
+      montarComentario({ uid, reviewId: RID, commentId, texto: 'Oi', commentCountAtual: await valor(`reviews/${RID}/commentCount`), carimbo: serverTimestamp(), resposta: { parentId, replyToId } }),
+    );
+
+  it('responde um comentário e responde a resposta (mesma conversa)', async () => {
+    await assertSucceeds(comentar('carol', RID, 'r1', 'Discordo', 'c1'));
+    await assertSucceeds(comentar('bob', RID, 'r2', 'Por quê?', 'r1'));
+    expect(await valor(`comments/${RID}/r2`)).toMatchObject({ parentId: 'c1', replyToId: 'r1' });
+    expect(await valor(`reviews/${RID}/commentCount`)).toBe(3);
+  });
+
+  it('recusa raiz inexistente ou que já é resposta (só um nível)', async () => {
+    await comentar('carol', RID, 'r1', 'Discordo', 'c1');
+    await assertFails(respostaManual('carol', 'x1', 'nada', 'nada'));
+    await assertFails(respostaManual('carol', 'x2', 'r1', 'r1'));
+  });
+
+  it('recusa responder comentário de outra conversa', async () => {
+    await comentar('carol', RID, 'c2');
+    await comentar('carol', RID, 'r1', 'Oi', 'c2');
+    await assertFails(respostaManual('bob', 'x1', 'c1', 'r1'));
+  });
+
+  it('recusa parentId sem replyToId e vice-versa', async () => {
+    const base = { uid: 'carol', text: 'Oi', createdAt: serverTimestamp() };
+    const contador = { [`reviews/${RID}/commentCount`]: 2 };
+    await assertFails(update(ref(dbDe('carol')), { [`comments/${RID}/x1`]: { ...base, parentId: 'c1' }, ...contador }));
+    await assertFails(update(ref(dbDe('carol')), { [`comments/${RID}/x2`]: { ...base, replyToId: 'c1' }, ...contador }));
+  });
+
+  it('resposta continua de pé depois que a raiz é apagada', async () => {
+    await comentar('carol', RID, 'r1', 'Discordo', 'c1');
+    await assertSucceeds(excluirComentario('bob', RID, 'c1'));
+    expect(await valor(`comments/${RID}/r1`)).not.toBeNull();
+  });
+});
+
+// =====================================================================
+// Notificações
+// =====================================================================
+
+describe('notificações', () => {
+  const RID = idReview('alice', 'tv_209867');
+
+  beforeEach(async () => {
+    await criarPerfil(dbDe('alice'), 'alice', 'alice');
+    await criarPerfil(dbDe('bob'), 'bob', 'bob');
+    await criarPerfil(dbDe('carol'), 'carol', 'carol');
+    await publicar('alice');
+  });
+
+  /** Caixa de avisos lida pela própria dona. */
+  const caixa = async (uid) => (await get(ref(dbDe(uid), `notifications/${uid}`))).val() ?? {};
+
+  it('curtir avisa a dona; descurtir tira o aviso; curtir de novo não duplica', async () => {
+    await assertSucceeds(curtir('bob', RID));
+    expect(await caixa('alice')).toEqual({ [`like~${RID}~bob`]: expect.objectContaining({ type: 'like', fromUid: 'bob', reviewId: RID }) });
+    await assertSucceeds(curtir('bob', RID, false));
+    expect(await caixa('alice')).toEqual({});
+    await curtir('bob', RID);
+    expect(Object.keys(await caixa('alice'))).toHaveLength(1);
+  });
+
+  it('curtir a própria review não gera aviso', async () => {
+    await assertSucceeds(curtir('alice', RID));
+    expect(await caixa('alice')).toEqual({});
+  });
+
+  it('comentar avisa a dona; apagar o comentário tira o aviso', async () => {
+    await assertSucceeds(comentar('bob', RID, 'c1'));
+    expect(Object.keys(await caixa('alice'))).toEqual([`comment~${RID}~c1`]);
+    await assertSucceeds(excluirComentario('bob', RID, 'c1'));
+    expect(await caixa('alice')).toEqual({});
+  });
+
+  it('resposta avisa quem foi respondido e a dona (uma vez cada)', async () => {
+    await comentar('bob', RID, 'c1');
+    await assertSucceeds(comentar('carol', RID, 'r1', 'Discordo', 'c1'));
+    expect(Object.keys(await caixa('bob'))).toEqual([`reply~${RID}~r1`]);
+    expect(Object.keys(await caixa('alice')).sort()).toEqual([`comment~${RID}~c1`, `comment~${RID}~r1`]);
+  });
+
+  it('dona respondida recebe só "reply"; ninguém avisa a si mesmo', async () => {
+    await comentar('alice', RID, 'c1');
+    await comentar('bob', RID, 'r1', 'Boa', 'c1');
+    expect(Object.keys(await caixa('alice'))).toEqual([`reply~${RID}~r1`]);
+    await comentar('alice', RID, 'r2', 'Valeu', 'r1');
+    expect(Object.keys(await caixa('bob'))).toEqual([`reply~${RID}~r2`]);
+    expect(Object.keys(await caixa('alice'))).toEqual([`reply~${RID}~r1`]);
+  });
+
+  it('dona apaga comentário de outra pessoa e o aviso dela some junto', async () => {
+    await comentar('bob', RID, 'c1');
+    await assertSucceeds(excluirComentario('alice', RID, 'c1'));
+    expect(await caixa('alice')).toEqual({});
+  });
+
+  it('descurtir funciona mesmo se a dona já apagou o aviso', async () => {
+    await curtir('bob', RID);
+    await assertSucceeds(set(ref(dbDe('alice'), `notifications/alice/like~${RID}~bob`), null));
+    await assertSucceeds(curtir('bob', RID, false));
+  });
+
+  it('só a dona lê a caixa de avisos', async () => {
+    await curtir('bob', RID);
+    await assertSucceeds(get(ref(dbDe('alice'), 'notifications/alice')));
+    await assertFails(get(ref(dbDe('bob'), 'notifications/alice')));
+    await assertFails(get(ref(dbDe(null), 'notifications/alice')));
+  });
+
+  it('não cria aviso falso (sem curtida/comentário de verdade)', async () => {
+    const aviso = { type: 'like', fromUid: 'bob', reviewId: RID, createdAt: serverTimestamp() };
+    await assertFails(set(ref(dbDe('bob'), `notifications/alice/like~${RID}~bob`), aviso));
+    await comentar('carol', RID, 'c1');
+    const falso = { type: 'comment', fromUid: 'bob', reviewId: RID, commentId: 'c1', createdAt: serverTimestamp() };
+    await assertFails(set(ref(dbDe('bob'), `notifications/alice/comment~${RID}~c1`), falso));
+  });
+
+  it('não manda aviso para quem não é a dona / respondida', async () => {
+    await assertFails(update(ref(dbDe('bob')), { ...montarCurtida({ uid: 'bob', reviewId: RID, curtir: true, likeCountAtual: 0 }), [`notifications/carol/like~${RID}~bob`]: { type: 'like', fromUid: 'bob', reviewId: RID, createdAt: serverTimestamp() } }));
+  });
+
+  it('não grava aviso em nome de outra pessoa nem com campo extra', async () => {
+    const mapa = montarCurtida({ uid: 'bob', reviewId: RID, curtir: true, likeCountAtual: 0, donoReview: 'alice', carimbo: serverTimestamp() });
+    const chave = `notifications/alice/like~${RID}~bob`;
+    await assertFails(update(ref(dbDe('bob')), { ...mapa, [chave]: { ...mapa[chave], fromUid: 'carol' } }));
+    await assertFails(update(ref(dbDe('bob')), { ...mapa, [chave]: { ...mapa[chave], hack: 1 } }));
+  });
+
+  it('terceiro não apaga aviso alheio', async () => {
+    await curtir('bob', RID);
+    await assertFails(set(ref(dbDe('carol'), `notifications/alice/like~${RID}~bob`), null));
+  });
+
+  it('bloqueado não comenta nem responde quem bloqueou (o aviso é recusado)', async () => {
+    await criarPerfil(dbDe('dani'), 'dani', 'dani');
+    await comentar('carol', RID, 'c1');
+    await update(ref(dbDe('carol')), montarBloqueio({ uid: 'carol', alvo: 'dani', bloquear: true }));
+    await assertFails(comentar('dani', RID, 'r1', 'Oi', 'c1'));
+    await assertSucceeds(comentar('dani', RID, 'c2'));
+  });
+
+  it('marca de "visto" só pela dona e com a hora do servidor', async () => {
+    await assertSucceeds(set(ref(dbDe('alice'), 'notificationsSeen/alice'), serverTimestamp()));
+    await assertFails(set(ref(dbDe('alice'), 'notificationsSeen/alice'), 0));
+    await assertFails(set(ref(dbDe('bob'), 'notificationsSeen/alice'), serverTimestamp()));
+    await assertFails(get(ref(dbDe('bob'), 'notificationsSeen/alice')));
   });
 });
 

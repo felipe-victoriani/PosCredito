@@ -47,6 +47,24 @@ test.describe('Perfil sem login', () => {
     await expect(page.getByRole('tab', { name: 'Seguindo' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByText('Entre para ver as reviews de quem você segue.')).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', 'perfil.html?voltar=index.html');
+    // Sem login, nada de sino de notificações
+    await expect(page.getByRole('link', { name: /Notificações/ })).toBeHidden();
+  });
+
+  test('notificações sem login convidam a entrar e voltam para a página', async ({ page }) => {
+    await bloquearRecursosExternos(page, { permitirFirebase: true });
+    await page.goto('/notificacoes.html');
+    await expect(page.getByRole('heading', { name: 'Notificações' })).toBeVisible();
+    await expect(page.getByText('Entre para ver quem curtiu e comentou suas reviews.')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', 'perfil.html?voltar=notificacoes.html');
+  });
+
+  test('link de review inválido mostra aviso sem consultar o banco', async ({ page }) => {
+    await bloquearRecursosExternos(page, { permitirFirebase: true });
+    await page.routeWebSocket(/firebaseio\.com/, (ws) => ws.close());
+    await page.route(/firebaseio\.com/, (rota) => rota.abort());
+    await page.goto('/review.html?id=../../users');
+    await expect(page.getByText('Link de review inválido.')).toBeVisible({ timeout: 20_000 });
   });
 
   test('barra inferior tem Início, Buscar, Nova review, Listas e Perfil', async ({ page }) => {

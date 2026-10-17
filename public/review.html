@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Review · PósCréditos</title>
+  <meta name="description" content="Uma review da comunidade PósCréditos, com curtidas e a conversa nos comentários.">
+  <meta name="theme-color" content="#0E0E12">
+  <meta name="color-scheme" content="dark">
+
+  <!-- Ícones e PWA -->
+  <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PósCréditos">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="Review · PósCréditos">
+  <meta property="og:description" content="Veja a review e entre na conversa no PósCréditos.">
+  <meta property="og:url" content="https://poscredito.vercel.app/review.html">
+  <meta property="og:image" content="https://poscredito.vercel.app/img/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Logo do PósCréditos com o slogan A conversa começa quando o filme acaba.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Review · PósCréditos">
+  <meta name="twitter:description" content="Veja a review e entre na conversa no PósCréditos.">
+  <meta name="twitter:image" content="https://poscredito.vercel.app/img/og-image.png">
+
+  <!-- Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://image.tmdb.org">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&display=swap">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/componentes.css">
+
+  <script type="module" src="js/review.js"></script>
+</head>
+<body>
+  <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="topo-simples">
+    <button id="botao-voltar" class="botao-icone botao-icone--plano" type="button" aria-label="Voltar">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="m15 18-6-6 6-6"/>
+      </svg>
+    </button>
+    <h1 class="topo-simples__titulo">Review</h1>
+  </header>
+
+  <main id="conteudo" class="container pagina-review" aria-busy="true">
+    <div id="review"></div>
+  </main>
+
+  <footer class="rodape"></footer>
+  <nav class="nav-inferior" aria-label="Navegação principal" data-ativo=""></nav>
+</body>
+</html>

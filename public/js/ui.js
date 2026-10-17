@@ -57,6 +57,7 @@ const ICONES = {
   opcoes: ['M13 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0', 'M20 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0', 'M6 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0'],
   lixeira: ['M3 6h18', 'M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6', 'M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'],
   enviar: ['M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z', 'm21.854 2.147-10.94 10.939'],
+  sino: ['M10.268 21a2 2 0 0 0 3.464 0', 'M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326'],
   olho: ['M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0', 'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0'],
 };
 
@@ -346,6 +347,13 @@ export function montarRodape() {
     el('a', { classe: 'rodape__link', texto: 'Regras da comunidade', atributos: { href: 'regras.html' } }),
     el('p', { classe: 'rodape__marca', texto: 'PósCréditos · A conversa começa quando o filme acaba.' }),
   );
+}
+
+/** Volta para a página anterior do app, ou para o início se veio de fora. */
+export function voltarOuInicio() {
+  const veioDoApp = document.referrer && new URL(document.referrer).origin === location.origin;
+  if (veioDoApp && history.length > 1) history.back();
+  else location.href = 'index.html';
 }
 
 /**

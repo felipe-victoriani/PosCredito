@@ -206,6 +206,8 @@
     // ---------------------------------------------------------------
     // Comentários: criar (sem editar); apagar só quem escreveu ou a dona
     // da review. O commentCount vai sempre junto (+1 / -1).
+    // Respostas (um nível): parentId = comentário raiz da conversa;
+    // replyToId = comentário respondido (a raiz ou outra resposta dela).
     // ---------------------------------------------------------------
     "comments": {
       "$reviewId": {
@@ -217,8 +219,49 @@
           "uid": { ".validate": "newData.val() === auth.uid" },
           "text": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500" },
           "createdAt": { ".validate": "newData.val() === now" },
+          // Raiz: existe e não é ela mesma uma resposta (só um nível)
+          "parentId": { ".validate": "newData.isString() && newData.val().length <= 40 && newData.parent().child('replyToId').exists() && root.child('comments').child($reviewId).child(newData.val()).exists() && !root.child('comments').child($reviewId).child(newData.val()).child('parentId').exists()" },
+          // Respondido: existe e está na mesma conversa
+          "replyToId": { ".validate": "newData.isString() && newData.val().length <= 40 && newData.parent().child('parentId').exists() && root.child('comments').child($reviewId).child(newData.val()).exists() && (newData.val() === newData.parent().child('parentId').val() || root.child('comments').child($reviewId).child(newData.val()).child('parentId').val() === newData.parent().child('parentId').val())" },
           "$outro": { ".validate": false }
         }
+      }
+    },
+
+    // ---------------------------------------------------------------
+    // Notificações: notifications/{quem recebe}/{tipo~reviewId~sufixo}.
+    // Sem Cloud Function: quem curte/comenta grava o aviso na MESMA
+    // escrita, e a regra só aceita se a curtida/comentário existir de
+    // verdade no resultado. Só a dona lê; ela só pode apagar.
+    // Quem gerou pode refazer ou apagar o próprio aviso (descurtir,
+    // apagar comentário). Bloqueado não gera aviso para quem bloqueou.
+    // ---------------------------------------------------------------
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".indexOn": ["createdAt"],
+        "$notifId": {
+          ".write": "auth != null && ((!data.exists() && !newData.exists()) || (auth.uid === $uid && !newData.exists()) || (auth.uid !== $uid && (!data.exists() || data.child('fromUid').val() === auth.uid) && (!newData.exists() || (newData.child('fromUid').val() === auth.uid && !root.child('blocks').child($uid).child(auth.uid).exists()))))",
+          // like: curtida de quem escreve existe na review da dona.
+          // comment: comentário de quem escreve existe na review da dona.
+          // reply: comentário de quem escreve responde um comentário da dona.
+          ".validate": "newData.hasChildren(['type', 'fromUid', 'reviewId', 'createdAt']) && (newData.child('type').val() === 'like' ? ($notifId === 'like~' + newData.child('reviewId').val() + '~' + auth.uid && newData.parent().parent().parent().child('likes').child(newData.child('reviewId').val()).child(auth.uid).exists() && newData.parent().parent().parent().child('reviews').child(newData.child('reviewId').val()).child('uid').val() === $uid) : (newData.hasChild('commentId') && $notifId === newData.child('type').val() + '~' + newData.child('reviewId').val() + '~' + newData.child('commentId').val() && newData.parent().parent().parent().child('comments').child(newData.child('reviewId').val()).child(newData.child('commentId').val()).child('uid').val() === auth.uid && (newData.child('type').val() === 'comment' ? newData.parent().parent().parent().child('reviews').child(newData.child('reviewId').val()).child('uid').val() === $uid : (newData.parent().parent().parent().child('comments').child(newData.child('reviewId').val()).child(newData.child('commentId').val()).child('replyToId').exists() && newData.parent().parent().parent().child('comments').child(newData.child('reviewId').val()).child(newData.parent().parent().parent().child('comments').child(newData.child('reviewId').val()).child(newData.child('commentId').val()).child('replyToId').val()).child('uid').val() === $uid))))",
+          "type": { ".validate": "newData.isString() && newData.val().matches(/^(like|comment|reply)$/)" },
+          "fromUid": { ".validate": "newData.val() === auth.uid" },
+          "reviewId": { ".validate": "newData.isString() && newData.val().length <= 200 && newData.val().matches(/^[A-Za-z0-9_-]+$/)" },
+          "commentId": { ".validate": "newData.isString() && newData.val().length <= 40 && newData.val().matches(/^[A-Za-z0-9_-]+$/)" },
+          "createdAt": { ".validate": "newData.val() === now" },
+          "$outro": { ".validate": false }
+        }
+      }
+    },
+
+    // Quando a dona abriu os avisos pela última vez (base do contador do sino)
+    "notificationsSeen": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.isNumber() && newData.val() === now"
       }
     },
 

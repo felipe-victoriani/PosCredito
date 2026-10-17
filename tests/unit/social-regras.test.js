@@ -1,13 +1,18 @@
 // Testes das regras puras sociais (public/js/social-regras.js).
 import { describe, expect, it } from 'vitest';
 import {
+  agruparConversas,
+  contarNaoLidas,
+  descreverAviso,
   filtrarPorTipo,
+  idNotificacao,
   mesclarPorData,
   montarComentario,
   montarCurtida,
   montarExclusaoComentario,
   montarSeguir,
   ordenarEmAlta,
+  rotuloContador,
   validarComentario,
 } from '../../public/js/social-regras.js';
 
@@ -36,10 +41,91 @@ describe('montagem das escritas', () => {
     expect(montarExclusaoComentario({ reviewId: 'r', commentId: 'c', commentCountAtual: 0 })['reviews/r/commentCount']).toBe(0);
   });
 
+  it('curtida avisa a dona (e tira o aviso ao descurtir), mas não a si mesma', () => {
+    expect(montarCurtida({ uid: 'a', reviewId: 'r', curtir: true, donoReview: 'd', carimbo: 1 })['notifications/d/like~r~a']).toEqual({
+      type: 'like',
+      fromUid: 'a',
+      reviewId: 'r',
+      createdAt: 1,
+    });
+    expect(montarCurtida({ uid: 'a', reviewId: 'r', curtir: false, likeCountAtual: 1, donoReview: 'd' })['notifications/d/like~r~a']).toBeNull();
+    expect(Object.keys(montarCurtida({ uid: 'd', reviewId: 'r', curtir: true, donoReview: 'd' }))).toHaveLength(2);
+  });
+
+  it('comentário avisa a dona; resposta avisa quem foi respondido', () => {
+    expect(montarComentario({ uid: 'a', reviewId: 'r', commentId: 'c', texto: 'Oi', carimbo: 1, donoReview: 'd' })).toHaveProperty('notifications/d/comment~r~c');
+    const resposta = montarComentario({
+      uid: 'a',
+      reviewId: 'r',
+      commentId: 'c2',
+      texto: 'Oi',
+      carimbo: 1,
+      donoReview: 'd',
+      resposta: { parentId: 'c', replyToId: 'c', replyToUid: 'b' },
+    });
+    expect(resposta['comments/r/c2']).toMatchObject({ parentId: 'c', replyToId: 'c' });
+    expect(resposta).toHaveProperty('notifications/b/reply~r~c2');
+    expect(resposta).toHaveProperty('notifications/d/comment~r~c2');
+  });
+
+  it('dona respondida recebe só um aviso; responder a si mesma não avisa', () => {
+    const paraDona = montarComentario({ uid: 'a', reviewId: 'r', commentId: 'c2', texto: 'Oi', donoReview: 'd', resposta: { parentId: 'c', replyToId: 'c', replyToUid: 'd' } });
+    expect(Object.keys(paraDona).filter((k) => k.startsWith('notifications/'))).toEqual(['notifications/d/reply~r~c2']);
+    const propria = montarComentario({ uid: 'a', reviewId: 'r', commentId: 'c2', texto: 'Oi', donoReview: 'a', resposta: { parentId: 'c', replyToId: 'c', replyToUid: 'a' } });
+    expect(Object.keys(propria).some((k) => k.startsWith('notifications/'))).toBe(false);
+  });
+
+  it('exclusão tira só os avisos que quem apaga pode tirar', () => {
+    const base = { reviewId: 'r', commentId: 'c', autorComentario: 'a', donoReview: 'd', respondido: 'b' };
+    // Quem escreveu: tira os dois avisos que gerou
+    expect(montarExclusaoComentario({ ...base, quem: 'a' })).toMatchObject({ 'notifications/b/reply~r~c': null, 'notifications/d/comment~r~c': null });
+    // A dona: só o da própria caixa
+    const pelaDona = montarExclusaoComentario({ ...base, quem: 'd' });
+    expect(pelaDona).toHaveProperty('notifications/d/comment~r~c', null);
+    expect(pelaDona).not.toHaveProperty('notifications/b/reply~r~c');
+  });
+
   it('valida comentário', () => {
     expect(validarComentario('  ')).toMatch(/Escreva/);
     expect(validarComentario('x'.repeat(501))).toMatch(/500/);
     expect(validarComentario('Concordo!')).toBeNull();
+  });
+});
+
+describe('conversas e avisos', () => {
+  const c = (id, createdAt, parentId) => ({ comentario: { id, createdAt, parentId } });
+
+  it('agrupa respostas embaixo da raiz, em ordem de data', () => {
+    const conversas = agruparConversas([c('r2', 4, 'a'), c('b', 2), c('a', 1), c('r1', 3, 'a')]);
+    expect(conversas.map((cv) => [cv.item.comentario.id, cv.respostas.map((r) => r.comentario.id)])).toEqual([
+      ['a', ['r1', 'r2']],
+      ['b', []],
+    ]);
+  });
+
+  it('resposta com raiz apagada vira raiz', () => {
+    expect(agruparConversas([c('r1', 3, 'sumiu')]).map((cv) => cv.item.comentario.id)).toEqual(['r1']);
+  });
+
+  it('conta avisos depois da última visita', () => {
+    const avisos = [{ createdAt: 5 }, { createdAt: 10 }, { createdAt: 20 }];
+    expect(contarNaoLidas(avisos, 10)).toBe(1);
+    expect(contarNaoLidas(avisos, null)).toBe(3);
+  });
+
+  it('descreve cada tipo de aviso (com e sem título)', () => {
+    expect(descreverAviso('like', 'Frieren')).toBe('curtiu sua review de Frieren.');
+    expect(descreverAviso('comment', 'Frieren')).toBe('comentou na sua review de Frieren:');
+    expect(descreverAviso('reply', null)).toBe('respondeu seu comentário:');
+  });
+
+  it('contador do sino vira "9+" no limite', () => {
+    expect(rotuloContador(3)).toBe('3');
+    expect(rotuloContador(10)).toBe('9+');
+  });
+
+  it('id do aviso é fixo por tipo, review e autor/comentário', () => {
+    expect(idNotificacao('like', 'u_movie_1', 'x')).toBe('like~u_movie_1~x');
   });
 });
 

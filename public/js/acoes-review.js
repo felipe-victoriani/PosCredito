@@ -9,7 +9,7 @@ import { semBloqueados } from './moderacao-regras.js';
 import { formatarContador } from './perfil-regras.js';
 import { LIMITES_REVIEW, tempoRelativo } from './reviews-regras.js';
 import { comentar, definirCurtida, excluirComentario, jaCurtiu, listarComentarios } from './social.js';
-import { validarComentario } from './social-regras.js';
+import { agruparConversas, validarComentario } from './social-regras.js';
 import { criarAvatar, criarEstado, el, icone, mostrarToast } from './ui.js';
 
 /** Manda para o login e volta para a página atual depois. */
@@ -39,15 +39,31 @@ function criarBotaoContador({ nomeIcone, rotulo, total }) {
 
 // ---------- Comentários ----------
 
-/** Um comentário, com lixeira para quem pode apagar. */
-function criarItemComentario({ comentario, autor }, { review, usuario, aoExcluir }) {
+/**
+ * Um comentário, com "Responder" e lixeira para quem pode apagar.
+ * @param {{comentario: object, autor: object|null}} item
+ * @param {{review: object, usuario: object|null, aoExcluir: Function, aoResponder: Function|null, respondido: object|null}} contexto
+ *   respondido: autor do comentário respondido, quando é resposta a outra resposta (mostra "@fulano")
+ */
+function criarItemComentario({ comentario, autor }, { review, usuario, aoExcluir, aoResponder, respondido }) {
   const podeApagar = usuario && (comentario.uid === usuario.uid || review.uid === usuario.uid);
   const nome = autor?.displayName ?? 'Pessoa removida';
 
   const lixeira = podeApagar
     ? el('button', { classe: 'comentario__apagar', atributos: { type: 'button', 'aria-label': `Apagar comentário de ${nome}` } }, [icone('lixeira', { tamanho: 18 })])
     : null;
-  lixeira?.addEventListener('click', () => aoExcluir(comentario.id));
+  lixeira?.addEventListener('click', () => aoExcluir(comentario));
+
+  // "Responder" (só logado; resposta de raiz apagada não aceita resposta)
+  const responder = aoResponder
+    ? el('button', { classe: 'comentario__responder', texto: 'Responder', atributos: { type: 'button', 'aria-label': `Responder ${nome}` } })
+    : null;
+  responder?.addEventListener('click', () => aoResponder({ comentario, nome }));
+
+  // Resposta a outra resposta: "@fulano" antes do texto, levando ao perfil
+  const mencao = respondido?.username
+    ? el('a', { classe: 'comentario__mencao', texto: `@${respondido.username}`, atributos: { href: `perfil.html?u=${encodeURIComponent(respondido.username)}` } })
+    : null;
 
   // "⋯" (denunciar/bloquear) nos comentários de outras pessoas
   const opcoes =
@@ -58,7 +74,8 @@ function criarItemComentario({ comentario, autor }, { review, usuario, aoExcluir
     abrirModeracao({ usuario, autor: { uid: comentario.uid, username: autor?.username }, tipo: 'comment', reviewId: review.id, commentId: comentario.id }),
   );
 
-  return el('li', { classe: 'comentario', atributos: { 'data-autor': comentario.uid } }, [
+  // id no DOM: o link de uma notificação rola até aqui
+  return el('div', { classe: 'comentario', atributos: { id: `comentario-${comentario.id}`, 'data-autor': comentario.uid } }, [
     criarAvatar({ ...autor, uid: comentario.uid }, 'p'),
     el('div', { classe: 'comentario__corpo' }, [
       el('p', { classe: 'comentario__cabecalho' }, [
@@ -67,7 +84,8 @@ function criarItemComentario({ comentario, autor }, { review, usuario, aoExcluir
           : el('span', { classe: 'comentario__nome', texto: nome }),
         el('span', { classe: 'comentario__tempo', texto: ` · ${tempoRelativo(comentario.createdAt)}` }),
       ]),
-      el('p', { classe: 'comentario__texto', texto: comentario.text }),
+      el('p', { classe: 'comentario__texto' }, [mencao, mencao ? ' ' : null, comentario.text]),
+      responder,
     ]),
     lixeira ?? opcoes,
   ]);
@@ -85,12 +103,61 @@ async function abrirModeracao(dados) {
 }
 
 /**
- * Painel de comentários (lista + campo para escrever).
+ * Painel de comentários (conversas + campo para escrever/responder).
+ * @param {{review: object, usuario: object|null, aoMudarTotal: Function, destacar?: string|null}} p
+ *   destacar: id de um comentário para rolar até ele e realçar (vindo de uma notificação)
  * @returns {{painel: HTMLElement, carregar: () => Promise<void>}}
  */
-function criarPainelComentarios({ review, usuario, aoMudarTotal }) {
+function criarPainelComentarios({ review, usuario, aoMudarTotal, destacar = null }) {
   const lista = el('ul', { classe: 'comentarios__lista', atributos: { 'aria-label': 'Comentários' } });
   const painel = el('div', { classe: 'comentarios', atributos: { id: `comentarios-${review.id}` } }, [lista]);
+
+  // Último carregamento: id → {comentario, autor} (para "@fulano" e para avisos ao apagar)
+  let porId = new Map();
+  // Resposta em andamento: { parentId, replyToId, replyToUid, nome } ou null
+  let respondendo = null;
+  // Preenchidos mais abaixo quando há login (campo de comentário)
+  let definirResposta = null;
+
+  /** Desenha uma conversa: raiz + respostas recuadas embaixo. */
+  function criarConversa({ item, respostas }) {
+    // Raiz que na verdade é resposta órfã (raiz apagada): sem "Responder"
+    const orfa = Boolean(item.comentario.parentId);
+    const contexto = (alvo) => ({
+      review,
+      usuario,
+      aoExcluir,
+      aoResponder: usuario && !orfa ? aoResponder : null,
+      // Só mostra "@fulano" quando responde outra resposta (não a raiz)
+      respondido: alvo.comentario.replyToId && alvo.comentario.replyToId !== alvo.comentario.parentId ? porId.get(alvo.comentario.replyToId)?.autor : null,
+    });
+    const raiz = criarItemComentario(item, contexto(item));
+    const filhos = respostas.length
+      ? el(
+          'ul',
+          { classe: 'comentarios__respostas', atributos: { 'aria-label': `Respostas a ${item.autor?.displayName ?? 'comentário'}` } },
+          respostas.map((r) => el('li', {}, [criarItemComentario(r, contexto(r))])),
+        )
+      : null;
+    return el('li', { classe: 'comentarios__conversa' }, [raiz, filhos]);
+  }
+
+  /** Clique em "Responder": a resposta entra na conversa da raiz. */
+  function aoResponder({ comentario, nome }) {
+    definirResposta?.({ parentId: comentario.parentId ?? comentario.id, replyToId: comentario.id, replyToUid: comentario.uid, nome });
+  }
+
+  /** Realça e rola até o comentário pedido (uma vez só). */
+  function destacarComentario() {
+    if (!destacar) return;
+    const alvo = painel.querySelector(`#comentario-${CSS.escape(destacar)}`);
+    destacar = null;
+    if (!alvo) return;
+    alvo.classList.add('comentario--destaque');
+    // Rolagem suave só para quem não pediu menos movimento
+    const suave = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    alvo.scrollIntoView({ behavior: suave ? 'smooth' : 'auto', block: 'center' });
+  }
 
   async function carregar() {
     lista.replaceChildren(el('li', { classe: 'comentarios__carregando', texto: 'Carregando comentários…' }));
@@ -98,17 +165,24 @@ function criarPainelComentarios({ review, usuario, aoMudarTotal }) {
       // Comentários de pessoas bloqueadas não aparecem
       const [todos, bloqueados] = await Promise.all([listarComentarios(review.id), obterBloqueadosSemFalhar(usuario)]);
       const itens = semBloqueados(todos, bloqueados, (item) => item.comentario.uid);
-      lista.replaceChildren(...itens.map((item) => criarItemComentario(item, { review, usuario, aoExcluir })));
+      porId = new Map(todos.map((item) => [item.comentario.id, item]));
+      lista.replaceChildren(...agruparConversas(itens).map(criarConversa));
       if (!itens.length) lista.replaceChildren(el('li', { classe: 'comentarios__vazio', texto: 'Nenhum comentário ainda.' }));
+      destacarComentario();
     } catch (erro) {
       console.error('[acoes] comentários', erro);
       lista.replaceChildren(el('li', {}, [criarEstado({ tipo: 'erro', mensagem: 'Não foi possível carregar os comentários.', acao: { texto: 'Tentar de novo', onClick: carregar } })]));
     }
   }
 
-  async function aoExcluir(commentId) {
+  async function aoExcluir(comentario) {
     try {
-      await excluirComentario(review.id, commentId);
+      await excluirComentario(review.id, comentario.id, {
+        quem: usuario.uid,
+        autorComentario: comentario.uid,
+        donoReview: review.uid,
+        respondido: comentario.replyToId ? (porId.get(comentario.replyToId)?.comentario.uid ?? null) : null,
+      });
       aoMudarTotal(-1);
       mostrarToast('Comentário apagado.');
       carregar();
@@ -134,11 +208,32 @@ function criarPainelComentarios({ review, usuario, aoMudarTotal }) {
   });
   const erro = el('p', { classe: 'erro-form', atributos: { role: 'alert' } });
   const enviar = el('button', { classe: 'botao botao--primario comentarios__enviar', atributos: { type: 'submit' } }, [icone('enviar', { tamanho: 20 }), el('span', { texto: 'Enviar' })]);
-  const form = el('form', { classe: 'comentarios__form', atributos: { novalidate: true } }, [
-    el('label', { classe: 'visualmente-oculto', texto: 'Seu comentário', atributos: { for: idCampo } }),
-    campo,
-    enviar,
-  ]);
+  const rotulo = el('label', { classe: 'visualmente-oculto', texto: 'Seu comentário', atributos: { for: idCampo } });
+
+  // Faixa "Respondendo a Fulano ✕" acima do campo (só durante uma resposta)
+  const textoResposta = el('span', { classe: 'comentarios__respondendo-texto' });
+  const cancelar = el('button', { classe: 'comentarios__cancelar', atributos: { type: 'button', 'aria-label': 'Cancelar resposta' } }, [icone('fechar', { tamanho: 18 })]);
+  const faixaResposta = el('div', { classe: 'comentarios__respondendo', atributos: { hidden: true } }, [textoResposta, cancelar]);
+
+  const form = el('form', { classe: 'comentarios__form', atributos: { novalidate: true } }, [faixaResposta, rotulo, campo, enviar]);
+
+  /** Liga/desliga o modo resposta (null = comentário normal). */
+  definirResposta = (alvo) => {
+    respondendo = alvo;
+    faixaResposta.hidden = !alvo;
+    textoResposta.textContent = alvo ? `Respondendo a ${alvo.nome}` : '';
+    campo.placeholder = alvo ? `Responder a ${alvo.nome}…` : 'Escreva um comentário…';
+    rotulo.textContent = alvo ? `Sua resposta a ${alvo.nome}` : 'Seu comentário';
+    if (alvo) campo.focus();
+  };
+  cancelar.addEventListener('click', () => {
+    definirResposta(null);
+    campo.focus();
+  });
+  // Esc no campo também cancela a resposta
+  campo.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape' && respondendo) definirResposta(null);
+  });
 
   form.addEventListener('submit', async (evento) => {
     evento.preventDefault();
@@ -149,8 +244,10 @@ function criarPainelComentarios({ review, usuario, aoMudarTotal }) {
 
     enviar.disabled = true;
     try {
-      await comentar(usuario.uid, review.id, texto);
+      const resposta = respondendo ? { parentId: respondendo.parentId, replyToId: respondendo.replyToId, replyToUid: respondendo.replyToUid } : null;
+      await comentar(usuario.uid, review.id, texto, { donoReview: review.uid, resposta });
       campo.value = '';
+      definirResposta(null);
       aoMudarTotal(1);
       await carregar();
     } catch (falha) {
@@ -192,9 +289,12 @@ async function compartilharComoImagem(review, autor, botao) {
  * Barra com curtir, comentar, compartilhar e "⋯" para uma review.
  * @param {object} review - precisa de id, uid, likeCount, commentCount
  * @param {object|null} usuario - pessoa logada (ou null)
- * @param {{autor?: {uid?: string, username: string}|null}} [opcoes] - autor da review (para o card e a moderação)
+ * @param {{autor?: {uid?: string, username: string}|null, abrirComentarios?: boolean, destacarComentario?: string|null}} [opcoes]
+ *   autor: autor da review (para o card e a moderação)
+ *   abrirComentarios: já começa com os comentários abertos (página da review)
+ *   destacarComentario: id do comentário a realçar (link de notificação)
  */
-export function criarAcoesReview(review, usuario, { autor = null } = {}) {
+export function criarAcoesReview(review, usuario, { autor = null, abrirComentarios = false, destacarComentario = null } = {}) {
   let curtido = false;
   let totalCurtidas = review.likeCount ?? 0;
   let totalComentarios = review.commentCount ?? 0;
@@ -247,7 +347,7 @@ export function criarAcoesReview(review, usuario, { autor = null } = {}) {
     pintarCurtida();
     curtir.botao.disabled = true;
     try {
-      totalCurtidas = await definirCurtida(usuario.uid, review.id, desejado);
+      totalCurtidas = await definirCurtida(usuario.uid, review.id, desejado, review.uid);
       pintarCurtida();
     } catch (erro) {
       console.error('[acoes] curtir', erro);
@@ -262,11 +362,12 @@ export function criarAcoesReview(review, usuario, { autor = null } = {}) {
 
   // Comentários: cria o painel na primeira abertura
   let painel = null;
-  comentarios.botao.addEventListener('click', () => {
+  function alternarComentarios() {
     if (!painel) {
       painel = criarPainelComentarios({
         review,
         usuario,
+        destacar: destacarComentario,
         aoMudarTotal: (passo) => {
           totalComentarios = Math.max(0, totalComentarios + passo);
           comentarios.numero.textContent = formatarContador(totalComentarios);
@@ -278,7 +379,9 @@ export function criarAcoesReview(review, usuario, { autor = null } = {}) {
       painel.painel.hidden = !painel.painel.hidden;
     }
     comentarios.botao.setAttribute('aria-expanded', String(!painel.painel.hidden));
-  });
+  }
+  comentarios.botao.addEventListener('click', alternarComentarios);
+  if (abrirComentarios) alternarComentarios();
 
   return raiz;
 }

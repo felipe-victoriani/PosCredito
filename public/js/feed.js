@@ -55,6 +55,12 @@ function carregarModulos() {
     usuario = await auth.usuarioAtual();
     bloqueados = await moderacao.obterBloqueados(usuario?.uid);
     modulos = { reviews, social, acoes };
+    // Sino com o contador de avisos (falhar aqui não atrapalha o feed)
+    if (usuario) {
+      import('./sino.js')
+        .then(({ montarSino }) => montarSino(usuario.uid))
+        .catch((erro) => console.error('[feed] sino', erro));
+    }
     return modulos;
   })();
   // Se falhar, permite tentar de novo depois

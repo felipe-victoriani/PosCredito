@@ -6,7 +6,7 @@
 // =====================================================================
 
 import { obterPerfil } from './auth.js';
-import { db, endAt, get, limitToFirst, limitToLast, orderByChild, orderByKey, push, query, ref, serverTimestamp, startAt, update } from './firebase.js';
+import { db, endAt, get, limitToFirst, limitToLast, onValue, orderByChild, orderByKey, push, query, ref, serverTimestamp, set, startAt, update } from './firebase.js';
 import { chaveUsername, normalizarUsername } from './perfil-regras.js';
 import { comTentativas, obterAutor } from './reviews.js';
 import { montarComentario, montarCurtida, montarExclusaoComentario, montarSeguir } from './social-regras.js';
@@ -97,13 +97,14 @@ export async function jaCurtiu(uid, reviewId) {
 }
 
 /**
- * Curte ou descurte. Devolve o novo total de curtidas.
+ * Curte ou descurte (avisando a dona da review). Devolve o novo total.
+ * @param {string} donoReview - uid de quem escreveu a review
  * @returns {Promise<number>}
  */
-export function definirCurtida(uid, reviewId, curtir) {
+export function definirCurtida(uid, reviewId, curtir, donoReview) {
   return comTentativas(async () => {
     const likeCountAtual = (await ler(`reviews/${reviewId}/likeCount`)) ?? 0;
-    const mapa = montarCurtida({ uid, reviewId, curtir, likeCountAtual });
+    const mapa = montarCurtida({ uid, reviewId, curtir, likeCountAtual, donoReview, carimbo: serverTimestamp() });
     await update(ref(db), mapa);
     return mapa[`reviews/${reviewId}/likeCount`];
   });
@@ -112,7 +113,7 @@ export function definirCurtida(uid, reviewId, curtir) {
 // ---------- Comentários ----------
 
 /** Comentários de uma review (mais antigos primeiro, como conversa). */
-export async function listarComentarios(reviewId, limite = 50) {
+export async function listarComentarios(reviewId, limite = 100) {
   const instantaneo = await get(query(ref(db, `comments/${reviewId}`), orderByChild('createdAt'), limitToLast(limite)));
   const comentarios = [];
   instantaneo.forEach((filho) => {
@@ -121,20 +122,88 @@ export async function listarComentarios(reviewId, limite = 50) {
   return Promise.all(comentarios.map(async (c) => ({ comentario: c, autor: await obterAutor(c.uid) })));
 }
 
-/** Publica um comentário. */
-export function comentar(uid, reviewId, texto) {
+/**
+ * Publica um comentário (ou resposta), avisando quem deve ser avisado.
+ * @param {{donoReview: string, resposta?: {parentId: string, replyToId: string, replyToUid: string}|null}} contexto
+ */
+export function comentar(uid, reviewId, texto, { donoReview, resposta = null }) {
   // O id é gerado uma vez só: numa nova tentativa, o mesmo comentário
   const commentId = push(ref(db, `comments/${reviewId}`)).key;
   return comTentativas(async () => {
     const commentCountAtual = (await ler(`reviews/${reviewId}/commentCount`)) ?? 0;
-    await update(ref(db), montarComentario({ uid, reviewId, commentId, texto, commentCountAtual, carimbo: serverTimestamp() }));
+    await update(ref(db), montarComentario({ uid, reviewId, commentId, texto, commentCountAtual, carimbo: serverTimestamp(), donoReview, resposta }));
   });
 }
 
-/** Exclui um comentário (quem escreveu ou a dona da review). */
-export function excluirComentario(reviewId, commentId) {
+/**
+ * Exclui um comentário (quem escreveu ou a dona da review), tirando
+ * junto os avisos que a pessoa pode tirar.
+ * @param {{quem: string, autorComentario: string, donoReview: string, respondido?: string|null}} contexto
+ */
+export function excluirComentario(reviewId, commentId, contexto) {
   return comTentativas(async () => {
     const commentCountAtual = (await ler(`reviews/${reviewId}/commentCount`)) ?? 0;
-    await update(ref(db), montarExclusaoComentario({ reviewId, commentId, commentCountAtual }));
+    await update(ref(db), montarExclusaoComentario({ reviewId, commentId, commentCountAtual, ...contexto }));
   });
+}
+
+// ---------- Notificações ----------
+
+/** Quando a pessoa abriu os avisos pela última vez (0 se nunca). */
+async function lerVistoEm(uid) {
+  return (await ler(`notificationsSeen/${uid}`)) ?? 0;
+}
+
+/**
+ * Avisos mais recentes da pessoa (mais novos primeiro), já com quem
+ * gerou, a review e o comentário. Review/comentário apagados vêm null.
+ * @returns {Promise<{avisos: object[], vistoEm: number}>}
+ */
+export async function listarNotificacoes(uid, limite = 50) {
+  const [instantaneo, vistoEm] = await Promise.all([
+    get(query(ref(db, `notifications/${uid}`), orderByChild('createdAt'), limitToLast(limite))),
+    lerVistoEm(uid),
+  ]);
+  const brutos = [];
+  instantaneo.forEach((filho) => {
+    brutos.push({ id: filho.key, ...filho.val() });
+  });
+
+  // Várias notificações costumam apontar para a mesma review: lê uma vez só
+  const reviews = new Map();
+  const lerReview = (id) => {
+    if (!reviews.has(id)) reviews.set(id, ler(`reviews/${id}`).catch(() => null));
+    return reviews.get(id);
+  };
+
+  const avisos = await Promise.all(
+    brutos.reverse().map(async (n) => ({
+      ...n,
+      autor: await obterAutor(n.fromUid),
+      review: await lerReview(n.reviewId),
+      comentario: n.commentId ? await ler(`comments/${n.reviewId}/${n.commentId}`).catch(() => null) : null,
+    })),
+  );
+  return { avisos, vistoEm };
+}
+
+/** Marca todos os avisos como vistos (agora, pela hora do servidor). */
+export function marcarNotificacoesVistas(uid) {
+  return set(ref(db, `notificationsSeen/${uid}`), serverTimestamp());
+}
+
+/**
+ * Observa quantos avisos novos existem (para o sino), em tempo real.
+ * Conta no máximo `limite` (o sino mostra "9+").
+ * @param {(total: number) => void} callback
+ * @returns {Promise<() => void>} função para parar de observar
+ */
+export async function observarNaoLidas(uid, callback, limite = 10) {
+  const vistoEm = await lerVistoEm(uid);
+  const consulta = query(ref(db, `notifications/${uid}`), orderByChild('createdAt'), startAt(vistoEm + 1), limitToLast(limite));
+  return onValue(
+    consulta,
+    (instantaneo) => callback(instantaneo.size),
+    (erro) => console.error('[social] contador de avisos', erro),
+  );
 }

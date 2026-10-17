@@ -3,6 +3,8 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+# Página pessoal (só faz sentido logado)
+Disallow: /notificacoes.html
 
 # Trocar pelo domínio de produção quando definir
 Sitemap: https://poscredito.vercel.app/sitemap.xml

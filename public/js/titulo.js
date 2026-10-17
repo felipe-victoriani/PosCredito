@@ -18,7 +18,7 @@ import {
   tituloOriginalDe,
   urlImagem,
 } from './tmdb.js';
-import { criarCartaoPoster, criarEstado, criarPoster, criarSelo, el, icone, iniciarPagina, mensagemErro, mostrarToast } from './ui.js';
+import { criarCartaoPoster, criarEstado, criarPoster, criarSelo, el, icone, iniciarPagina, mensagemErro, mostrarToast, voltarOuInicio } from './ui.js';
 
 // Quantos itens mostrar nos carrosséis
 const MAX_ELENCO = 15;
@@ -197,13 +197,6 @@ function renderizarSemelhantes(detalhes, mediaType) {
 
 // ---------- Ações do topo ----------
 
-/** Volta para a página anterior do app, ou para o início se veio de fora. */
-function voltar() {
-  const veioDoApp = document.referrer && new URL(document.referrer).origin === location.origin;
-  if (veioDoApp && history.length > 1) history.back();
-  else location.href = 'index.html';
-}
-
 /** Compartilha o link do título (Web Share API, com cópia como alternativa). */
 async function compartilhar() {
   const dados = { title: document.title, url: location.href };
@@ -293,7 +286,7 @@ async function carregarComunidade(detalhes, mediaType) {
 
 // ---------- Eventos e início ----------
 
-$('botao-voltar').addEventListener('click', voltar);
+$('botao-voltar').addEventListener('click', voltarOuInicio);
 $('botao-compartilhar').addEventListener('click', compartilhar);
 $('ler-mais').addEventListener('click', alternarSinopse);
 

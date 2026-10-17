@@ -83,6 +83,12 @@ export async function obterMinhaReview(uid, mediaKey) {
   return review ? { id: idReview(uid, mediaKey), ...review } : null;
 }
 
+/** Uma review pelo id, com o autor (ou null se não existir). */
+export async function obterReviewComAutor(reviewId) {
+  const review = await ler(`reviews/${reviewId}`);
+  return review ? { review: { id: reviewId, ...review }, autor: await obterAutor(review.uid) } : null;
+}
+
 /** Soma/contagem das notas do título (ou null). */
 export function obterEstatisticaTitulo(mediaKey) {
   return ler(`titleStats/${mediaKey}`);

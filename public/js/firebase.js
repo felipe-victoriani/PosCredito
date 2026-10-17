@@ -33,6 +33,7 @@ export {
   get,
   limitToFirst,
   limitToLast,
+  onValue,
   orderByChild,
   orderByKey,
   orderByValue,
@@ -41,6 +42,7 @@ export {
   ref,
   runTransaction,
   serverTimestamp,
+  set,
   startAt,
   update,
 } from 'https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js';
