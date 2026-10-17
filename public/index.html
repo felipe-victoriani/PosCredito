@@ -72,6 +72,7 @@
     <div id="abas-feed" class="abas abas--feed" role="tablist" aria-label="Feed">
       <button id="aba-seguindo" class="abas__aba" type="button" role="tab" aria-selected="false" aria-controls="painel-feed" data-aba="seguindo" tabindex="-1">Seguindo</button>
       <button id="aba-em-alta" class="abas__aba" type="button" role="tab" aria-selected="true" aria-controls="painel-feed" data-aba="em-alta">Em alta</button>
+      <button id="aba-pessoas" class="abas__aba" type="button" role="tab" aria-selected="false" aria-controls="painel-feed" data-aba="pessoas" tabindex="-1">Pessoas</button>
     </div>
 
     <div id="painel-feed" class="painel" role="tabpanel" aria-labelledby="aba-em-alta">
@@ -86,6 +87,10 @@
 
       <ul id="lista-feed" class="lista-reviews" aria-label="Reviews"></ul>
       <button id="mais-feed" class="botao botao--secundario botao--bloco" type="button" hidden>Ver mais</button>
+
+      <!-- Aba "Pessoas": sugestões para seguir (no lugar das reviews) -->
+      <ul id="lista-pessoas" class="lista-sugestoes" aria-label="Sugestões para seguir" hidden></ul>
+      <button id="mais-pessoas" class="botao botao--secundario botao--bloco" type="button" hidden>Ver mais pessoas</button>
     </div>
 
     <!-- Vitrine do catálogo (TMDB): descoberta mesmo sem reviews -->

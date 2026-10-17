@@ -13,6 +13,7 @@ import {
   montarSeguir,
   ordenarEmAlta,
   rotuloContador,
+  sugerirPessoas,
   validarComentario,
 } from '../../public/js/social-regras.js';
 
@@ -126,6 +127,50 @@ describe('conversas e avisos', () => {
 
   it('id do aviso é fixo por tipo, review e autor/comentário', () => {
     expect(idNotificacao('like', 'u_movie_1', 'x')).toBe('like~u_movie_1~x');
+  });
+});
+
+describe('sugestões de pessoas', () => {
+  const p = (uid, extras = {}) => ({ uid, displayName: uid, username: uid, stats: { followers: 0 }, ...extras });
+  const base = {
+    meuUid: 'eu',
+    seguidos: new Set(['seguido']),
+    bloqueados: new Set(['chato']),
+    meusSeguidores: new Set(),
+    meusInteresses: { generos: { terror: true, drama: true }, tipos: { anime: true } },
+    ativos: new Set(),
+    rotulos: { terror: 'Terror', drama: 'Drama', anime: 'Animes' },
+  };
+
+  it('tira a própria pessoa, quem ela segue, bloqueados e repetidos', () => {
+    const perfis = [p('eu'), p('seguido'), p('chato'), p('ana'), p('ana')];
+    expect(sugerirPessoas({ ...base, perfis }).map((s) => s.perfil.uid)).toEqual(['ana']);
+  });
+
+  it('ordem: segue você > gostos em comum > ativo > mais seguidos', () => {
+    const perfis = [
+      p('popular', { stats: { followers: 40 } }),
+      p('ativo'),
+      p('gosto', { interests: { generos: { terror: true } } }),
+      p('fa'),
+    ];
+    const resultado = sugerirPessoas({ ...base, perfis, meusSeguidores: new Set(['fa']), ativos: new Set(['ativo']) });
+    expect(resultado.map((s) => s.perfil.uid)).toEqual(['fa', 'gosto', 'ativo', 'popular']);
+    expect(resultado.map((s) => s.motivo)).toEqual(['Segue você', 'Também curte Terror', 'Publicou há pouco', '40 seguidores']);
+  });
+
+  it('motivo junta até dois interesses em comum', () => {
+    const perfis = [p('ana', { interests: { generos: { terror: true, drama: true }, tipos: { anime: true } } })];
+    expect(sugerirPessoas({ ...base, perfis })[0].motivo).toBe('Também curte Terror e Drama');
+  });
+
+  it('sem login: ninguém excluído além de bloqueio vazio; ordena por seguidores', () => {
+    const perfis = [p('a'), p('b', { stats: { followers: 3 } })];
+    const resultado = sugerirPessoas({ ...base, perfis, meuUid: null, seguidos: new Set(), bloqueados: new Set(), meusInteresses: null });
+    expect(resultado.map((s) => [s.perfil.uid, s.motivo])).toEqual([
+      ['b', '3 seguidores'],
+      ['a', 'Novo por aqui'],
+    ]);
   });
 });
 

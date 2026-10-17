@@ -2,7 +2,8 @@
 // feed.js — página inicial
 // ---------------------------------------------------------------------
 // Feed de reviews com abas "Seguindo" e "Em alta" + filtros por tipo,
-// e embaixo a vitrine "Em alta no catálogo" (TMDB).
+// a aba "Pessoas" (sugestões para seguir) e embaixo a vitrine
+// "Em alta no catálogo" (TMDB).
 // A parte de reviews usa Firebase e é carregada com import dinâmico:
 // se falhar, a vitrine do catálogo continua funcionando.
 // =====================================================================
@@ -24,6 +25,11 @@ const filtros = $('filtros-feed');
 const abas = $('abas-feed');
 const grade = $('grade-em-alta');
 const botaoMaisVitrine = $('carregar-mais');
+const listaPessoas = $('lista-pessoas');
+const botaoMaisPessoas = $('mais-pessoas');
+
+// Ordem das abas (setas do teclado andam nesta ordem)
+const ORDEM_ABAS = ['seguindo', 'em-alta', 'pessoas'];
 
 // Estado do feed
 let abaAtual = 'em-alta';
@@ -34,6 +40,8 @@ let modulos = null; // { reviews, social, acoes } depois do import dinâmico
 let seguidos = null; // uids que a pessoa segue
 let bloqueados = new Set(); // uids bloqueados (somem do feed)
 const cache = { 'em-alta': null, seguindo: null }; // itens já carregados por aba
+let sugestoes = null; // aba "Pessoas": calculadas uma vez por visita
+let mostrandoPessoas = POR_PAGINA;
 
 // =====================================================================
 // Feed de reviews
@@ -96,7 +104,9 @@ function mostrarVazio() {
     mensagem = 'Entre para ver as reviews de quem você segue.';
     extra = criarBotaoEntrar();
   } else if (abaAtual === 'seguindo' && !seguidos?.length) {
-    mensagem = 'Você ainda não segue ninguém. Busque pessoas pelo @ na busca ou siga quem aparece em "Em alta".';
+    mensagem = 'Você ainda não segue ninguém. Veja quem tem gostos parecidos com os seus:';
+    extra = el('button', { classe: 'botao botao--primario', texto: 'Ver sugestões', atributos: { type: 'button' } });
+    extra.addEventListener('click', () => selecionarAba('pessoas', { focar: true }));
   } else if (filtroAtual !== 'tudo') {
     mensagem = `Nenhuma review de ${ROTULO_TIPO_PLURAL[filtroAtual].toLowerCase()} por aqui ainda.`;
   } else if (abaAtual === 'seguindo') {
@@ -125,9 +135,72 @@ function renderizarFeed(itens) {
   botaoMaisFeed.hidden = filtrados.length <= mostrando;
 }
 
+// ---------- Aba "Pessoas" ----------
+
+/** Desenha as sugestões (com "Ver mais"). */
+function renderizarPessoas(modulo) {
+  const visiveis = sugestoes.filter((s) => !bloqueados.has(s.perfil.uid));
+  if (!visiveis.length) {
+    botaoMaisPessoas.hidden = true;
+    const mensagem = usuario ? 'Você já segue todo mundo por aqui. Chame os amigos para o PósCréditos!' : 'Ainda não há pessoas por aqui.';
+    listaPessoas.replaceChildren(el('li', {}, [criarEstado({ tipo: 'vazio', mensagem })]));
+    return;
+  }
+  const contexto = {
+    usuario,
+    irParaLogin: () => {
+      location.href = 'perfil.html?voltar=index.html';
+    },
+    // Seguiu alguém: o feed "Seguindo" precisa ser refeito
+    aoMudar: () => {
+      seguidos = null;
+      cache.seguindo = null;
+    },
+  };
+  listaPessoas.replaceChildren(...visiveis.slice(0, mostrandoPessoas).map((s) => modulo.criarLinhaSugestao(s, contexto)));
+  botaoMaisPessoas.hidden = visiveis.length <= mostrandoPessoas;
+}
+
+/** Carrega (uma vez por visita) e mostra as sugestões de pessoas. */
+async function carregarPessoas() {
+  listaPessoas.replaceChildren(...criarEsqueletos(4, 'esqueleto esqueleto--linha-pessoa'));
+  listaPessoas.setAttribute('aria-busy', 'true');
+  botaoMaisPessoas.hidden = true;
+  try {
+    const [, modulo] = await Promise.all([carregarModulos(), import('./pessoas-sugeridas.js')]);
+    if (!sugestoes) {
+      // Quem publicou há pouco conta como "ativo" (aproveita o "Em alta")
+      const recentes = await obterItens('em-alta');
+      sugestoes = await modulo.obterSugestoes({ usuario, bloqueados, autoresAtivos: recentes.map((item) => item.review.uid) });
+    }
+    if (abaAtual !== 'pessoas') return; // trocou de aba no meio
+    renderizarPessoas(modulo);
+  } catch (erro) {
+    if (abaAtual !== 'pessoas') return;
+    console.error('[feed] pessoas', erro);
+    listaPessoas.replaceChildren(
+      el('li', {}, [criarEstado({ tipo: 'erro', mensagem: 'Não foi possível carregar as sugestões agora.', acao: { texto: 'Tentar de novo', onClick: carregarPessoas } })]),
+    );
+  } finally {
+    listaPessoas.removeAttribute('aria-busy');
+  }
+}
+
+/** Mostra a lista certa: reviews (com filtros) ou pessoas. */
+function mostrarListaDaAba(aba) {
+  const ehPessoas = aba === 'pessoas';
+  filtros.hidden = ehPessoas;
+  listaFeed.hidden = ehPessoas;
+  botaoMaisFeed.hidden = true;
+  listaPessoas.hidden = !ehPessoas;
+  botaoMaisPessoas.hidden = true;
+}
+
 /** Carrega e mostra a aba atual. */
 async function carregarFeed() {
   const aba = abaAtual;
+  mostrarListaDaAba(aba);
+  if (aba === 'pessoas') return carregarPessoas();
   listaFeed.replaceChildren(el('li', {}, [el('div', { classe: 'esqueleto esqueleto--review' })]), el('li', {}, [el('div', { classe: 'esqueleto esqueleto--review' })]));
   listaFeed.setAttribute('aria-busy', 'true');
   botaoMaisFeed.hidden = true;
@@ -293,17 +366,24 @@ abas.addEventListener('click', (evento) => {
   if (botao.dataset.aba !== abaAtual || !listaFeed.querySelector('.review, .estado')) selecionarAba(botao.dataset.aba);
 });
 
-// Setas trocam entre as duas abas (padrão ARIA)
+// Setas andam entre as abas, dando a volta; Home/End vão à primeira/última (padrão ARIA)
 abas.addEventListener('keydown', (evento) => {
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(evento.key)) return;
   evento.preventDefault();
   pessoaEscolheuAba = true;
-  selecionarAba(abaAtual === 'seguindo' ? 'em-alta' : 'seguindo', { focar: true });
+  const atual = ORDEM_ABAS.indexOf(abaAtual);
+  const ultima = ORDEM_ABAS.length - 1;
+  const destino = { ArrowLeft: atual === 0 ? ultima : atual - 1, ArrowRight: atual === ultima ? 0 : atual + 1, Home: 0, End: ultima }[evento.key];
+  selecionarAba(ORDEM_ABAS[destino], { focar: true });
 });
 
 botaoMaisFeed.addEventListener('click', () => {
   mostrando += POR_PAGINA;
   renderizarFeed(cache[abaAtual] ?? []);
+});
+botaoMaisPessoas.addEventListener('click', async () => {
+  mostrandoPessoas += POR_PAGINA;
+  renderizarPessoas(await import('./pessoas-sugeridas.js'));
 });
 botaoMaisVitrine.addEventListener('click', carregarVitrine);
 

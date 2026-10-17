@@ -49,6 +49,15 @@ test.describe('Perfil sem login', () => {
     await expect(page.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', 'perfil.html?voltar=index.html');
     // Sem login, nada de sino de notificações
     await expect(page.getByRole('link', { name: /Notificações/ })).toBeHidden();
+
+    // Aba "Pessoas" pelo teclado (seta para a direita duas vezes, dando a volta)
+    await page.getByRole('tab', { name: 'Seguindo' }).press('ArrowRight');
+    await page.getByRole('tab', { name: 'Em alta' }).press('ArrowRight');
+    await expect(page.getByRole('tab', { name: 'Pessoas' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tab', { name: 'Pessoas' })).toBeFocused();
+    // Filtros de tipo não fazem sentido para pessoas
+    await expect(page.getByRole('group', { name: 'Filtrar por tipo' })).toBeHidden();
+    await expect(page.getByRole('list', { name: 'Sugestões para seguir' })).toBeVisible();
   });
 
   test('notificações sem login convidam a entrar e voltam para a página', async ({ page }) => {

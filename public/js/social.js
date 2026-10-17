@@ -89,6 +89,40 @@ export async function listarPessoasDaRede(uid, tipo, limite = 100) {
   return perfis.filter(Boolean).sort((a, b) => a.displayName.localeCompare(b.displayName, 'pt-BR'));
 }
 
+// ---------- Sugestões de pessoas ----------
+
+// Quantos @ ler da lista pública para montar as sugestões
+const MAX_CANDIDATOS = 100;
+
+/**
+ * Matéria-prima das sugestões: perfis candidatos + quem a pessoa já
+ * segue + quem a segue. Candidatos = quem segue a pessoa, autores de
+ * reviews recentes (uidsExtras) e uma amostra da lista de @.
+ * @param {string|null} uid - pessoa logada (null = visitante)
+ * @param {string[]} uidsExtras
+ */
+export async function carregarCandidatos(uid, uidsExtras = []) {
+  const [amostra, seguidos, seguidores] = await Promise.all([
+    get(query(ref(db, 'usernames'), orderByKey(), limitToFirst(MAX_CANDIDATOS))).then((instantaneo) => {
+      const uids = [];
+      instantaneo.forEach((filho) => {
+        uids.push(filho.val());
+      });
+      return uids;
+    }),
+    // Toda a lista de quem a pessoa segue (para não sugerir de novo)
+    uid ? listarUids('follows', uid, 1000) : [],
+    uid ? listarUids('followers', uid, MAX_CANDIDATOS) : [],
+  ]);
+
+  const jaSegue = new Set(seguidos);
+  // Só busca perfis de quem pode virar sugestão (economiza leituras)
+  const uids = [...new Set([...seguidores, ...uidsExtras, ...amostra])].filter((u) => u !== uid && !jaSegue.has(u));
+  const perfis = (await Promise.all(uids.map((u) => obterAutor(u)))).filter(Boolean);
+
+  return { perfis, seguidos: jaSegue, meusSeguidores: new Set(seguidores) };
+}
+
 // ---------- Curtidas ----------
 
 /** true se a pessoa já curtiu a review. */

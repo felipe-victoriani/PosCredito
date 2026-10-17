@@ -164,6 +164,74 @@ export function validarComentario(texto) {
   return null;
 }
 
+// ---------- Sugestões de pessoas ----------
+
+// Pesos da ordem das sugestões (maior = aparece antes)
+// (um gênero em comum vale mais que ter publicado há pouco; seguidores
+// só desempatam, com teto para não virar ranking de popularidade)
+const PESO = { SEGUE_VOCE: 100, GENERO: 6, TIPO: 4, ATIVO: 5, SEGUIDOR: 0.1, MAX_SEGUIDORES: 50 };
+
+/** Ids presentes nos dois mapas de interesses ({terror: true}). */
+function emComum(meus, deles) {
+  return Object.keys(deles ?? {}).filter((id) => meus?.[id]);
+}
+
+/** Junta até 2 nomes: "Terror", "Terror e Anime". */
+function juntarNomes(ids, rotulos) {
+  return ids
+    .slice(0, 2)
+    .map((id) => rotulos[id] ?? id)
+    .join(' e ');
+}
+
+/**
+ * Escolhe e ordena quem sugerir para seguir.
+ * Fora: a própria pessoa, quem ela já segue e quem ela bloqueou.
+ * @param {{
+ *   perfis: object[], meuUid: string|null, seguidos: Set<string>, bloqueados: Set<string>,
+ *   meusSeguidores: Set<string>, meusInteresses: object|null, ativos: Set<string>,
+ *   rotulos: Record<string,string>
+ * }} p - rotulos: id do interesse → nome ("terror" → "Terror")
+ * @returns {{perfil: object, motivo: string}[]}
+ */
+export function sugerirPessoas({ perfis, meuUid, seguidos, bloqueados, meusSeguidores, meusInteresses, ativos, rotulos }) {
+  const vistos = new Set();
+  const sugestoes = [];
+
+  for (const perfil of perfis) {
+    if (!perfil?.uid || vistos.has(perfil.uid)) continue;
+    vistos.add(perfil.uid);
+    if (perfil.uid === meuUid || seguidos.has(perfil.uid) || bloqueados.has(perfil.uid)) continue;
+
+    const segueVoce = meusSeguidores.has(perfil.uid);
+    const generos = emComum(meusInteresses?.generos, perfil.interests?.generos);
+    const tipos = emComum(meusInteresses?.tipos, perfil.interests?.tipos);
+    const ativo = ativos.has(perfil.uid);
+    const seguidores = perfil.stats?.followers ?? 0;
+
+    const pontos =
+      (segueVoce ? PESO.SEGUE_VOCE : 0) +
+      generos.length * PESO.GENERO +
+      tipos.length * PESO.TIPO +
+      (ativo ? PESO.ATIVO : 0) +
+      Math.min(seguidores, PESO.MAX_SEGUIDORES) * PESO.SEGUIDOR;
+
+    // O motivo mais forte vira a frase embaixo do nome
+    let motivo;
+    if (segueVoce) motivo = 'Segue você';
+    else if (generos.length || tipos.length) motivo = `Também curte ${juntarNomes([...generos, ...tipos], rotulos)}`;
+    else if (ativo) motivo = 'Publicou há pouco';
+    else if (seguidores) motivo = `${seguidores} ${seguidores === 1 ? 'seguidor' : 'seguidores'}`;
+    else motivo = 'Novo por aqui';
+
+    sugestoes.push({ perfil, motivo, pontos, seguidores });
+  }
+
+  return sugestoes
+    .sort((a, b) => b.pontos - a.pontos || b.seguidores - a.seguidores || a.perfil.displayName.localeCompare(b.perfil.displayName, 'pt-BR'))
+    .map(({ perfil, motivo }) => ({ perfil, motivo }));
+}
+
 // ---------- Feed ----------
 
 /** Filtro de tipo do feed ("tudo" passa tudo). */

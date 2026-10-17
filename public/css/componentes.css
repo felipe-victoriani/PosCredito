@@ -1242,6 +1242,41 @@
   /* ---------- Página de uma review ---------- */
   .pagina-review { padding-bottom: var(--esp-8); }
 
+  /* ---------- Aba "Pessoas": sugestões para seguir ---------- */
+  .lista-sugestoes > li + li { border-top: 1px solid var(--cor-borda); }
+  .sugestao {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--esp-3);
+    align-items: center;
+  }
+  /* Parte clicável (vai ao perfil): avatar + textos */
+  .sugestao__perfil {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--esp-4);
+    align-items: center;
+    min-width: 0;
+    padding-block: var(--esp-4);
+    text-decoration: none;
+    &:hover .sugestao__nome { color: var(--cor-destaque); }
+  }
+  .sugestao__nome {
+    font-size: var(--texto-lg);
+    font-weight: var(--peso-extra);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+    transition: color var(--duracao-rapida);
+  }
+  .sugestao__motivo { font-size: var(--texto-sm); color: var(--cor-texto-2); }
+  .sugestao__seguir {
+    min-height: var(--alvo-toque);
+    min-width: 6.5rem;          /* "Seguir" e "Seguindo" com a mesma largura: o botão não pula */
+    padding-inline: var(--esp-4);
+  }
+  /* "Seguindo" com contorno amarelo (igual ao perfil) */
+  .sugestao__seguir[aria-pressed="true"] { border-color: var(--cor-destaque); color: var(--cor-destaque); }
+
   /* ---------- Busca: linha de pessoa ---------- */
   .resultado--pessoa .avatar { justify-self: center; }
   .resultado__mono { font-family: var(--fonte-mono); font-size: var(--texto-sm); color: var(--cor-texto-2); overflow-wrap: anywhere; }
